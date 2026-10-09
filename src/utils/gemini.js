@@ -306,6 +306,7 @@ async function requestDeepSeek(messages, onText) {
                 model,
                 messages,
                 stream: true,
+                thinking: { type: 'disabled' },
                 temperature: 0.4,
                 max_tokens: 2048,
             }),
