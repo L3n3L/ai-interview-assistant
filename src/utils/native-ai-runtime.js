@@ -71,6 +71,15 @@ function getModelsDirectory() {
     return path.join(getConfigDir(), 'models');
 }
 
+function getCudaWhisperBinary() {
+    if (process.platform !== 'win32' || process.arch !== 'x64') {
+        return null;
+    }
+
+    const cudaBinaryPath = path.join(getBinariesDirectory(), 'whisper-cuda', 'whisper-server-win32-x64-cuda.exe');
+    return fs.existsSync(cudaBinaryPath) ? cudaBinaryPath : null;
+}
+
 async function calculateSha256(filePath) {
     return new Promise((resolve, reject) => {
         const hash = crypto.createHash('sha256');
@@ -148,6 +157,14 @@ async function installVerifiedFile({ url, destinationPath, sha256, executable, o
 }
 
 async function ensureNativeBinary(type, onProgress, signal) {
+    if (type === 'whisper') {
+        const cudaBinaryPath = getCudaWhisperBinary();
+        if (cudaBinaryPath) {
+            console.log('[NativeAI] Using CUDA Whisper binary:', cudaBinaryPath);
+            return cudaBinaryPath;
+        }
+    }
+
     const release = getPlatformReleases()[type];
     const destinationPath = path.join(getBinariesDirectory(), release.filename);
 

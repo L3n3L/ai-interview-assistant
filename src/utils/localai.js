@@ -452,9 +452,34 @@ function validatePreparedNativeFiles(nativeFiles) {
 async function startWhisperServer(executablePath, modelPath) {
     const port = await getAvailablePort();
     whisperBaseUrl = `http://127.0.0.1:${port}`;
+    const backend = executablePath.includes('whisper-cuda') ? 'cuda' : 'cpu';
+    let serverModelPath = modelPath;
+
+    // The bundled Windows CUDA runner crashes when the model path contains non-ASCII characters.
+    // Keep the user-facing data directory unchanged and stage one verified copy on the same drive.
+    if (backend === 'cuda' && process.platform === 'win32' && /[^\x00-\x7F]/.test(modelPath)) {
+        const stagingDirectory = path.join(path.parse(modelPath).root, 'cheating-daddy-whisper-cache');
+        const stagingPath = path.join(stagingDirectory, path.basename(modelPath));
+        const sourceStats = fs.statSync(modelPath);
+        const targetStats = fs.existsSync(stagingPath) ? fs.statSync(stagingPath) : null;
+
+        if (!targetStats || targetStats.size !== sourceStats.size) {
+            fs.mkdirSync(stagingDirectory, { recursive: true });
+            fs.copyFileSync(modelPath, stagingPath);
+        }
+
+        serverModelPath = stagingPath;
+        logTransportEvent('whisper.model_path_staged', { reason: 'cuda_unicode_path_compatibility' });
+    }
+
+    logTransportEvent('whisper.backend_selected', {
+        backend,
+        executable: path.basename(executablePath),
+    });
+    console.log('[LocalAI] Whisper backend:', backend, executablePath);
     whisperProcess = startNativeServer({
         executablePath,
-        arguments: ['-m', modelPath, '--host', '127.0.0.1', '--port', String(port)],
+        arguments: ['-m', serverModelPath, '--host', '127.0.0.1', '--port', String(port)],
         name: 'Whisper',
     });
 
