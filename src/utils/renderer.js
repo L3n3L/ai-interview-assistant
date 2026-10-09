@@ -56,6 +56,13 @@ const storage = {
     async setGroqApiKey(groqApiKey) {
         return ipcRenderer.invoke('storage:set-groq-api-key', groqApiKey);
     },
+    async getDeepSeekApiKey() {
+        const result = await ipcRenderer.invoke('storage:get-deepseek-api-key');
+        return result.success ? result.data : '';
+    },
+    async setDeepSeekApiKey(deepseekApiKey) {
+        return ipcRenderer.invoke('storage:set-deepseek-api-key', deepseekApiKey);
+    },
 
     // Preferences
     async getPreferences() {
@@ -167,6 +174,40 @@ async function initializeLocal(profile = 'interview') {
         cheatingDaddy.setStatus('error');
         return false;
     }
+}
+
+async function initializeDeepSeek(profile = 'interview', language = 'en-US') {
+    const creds = await storage.getCredentials();
+    const apiKey = creds.deepseekApiKey || '';
+    if (!apiKey.trim()) {
+        cheatingDaddy.setStatus('error');
+        return false;
+    }
+
+    const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
+    const configuredWhisperModel = prefs.whisperModel || 'tiny.en';
+    const isChinese = /^(zh|cmn)/i.test(language || '');
+    // English-only Whisper checkpoints cannot transcribe Chinese. The multilingual
+    // tiny checkpoint is downloaded and verified automatically when needed.
+    const whisperModel = isChinese && configuredWhisperModel.endsWith('.en') ? 'tiny' : configuredWhisperModel;
+    const model = config.deepseekModel || 'deepseek-flash';
+    const success = await ipcRenderer.invoke(
+        'initialize-deepseek',
+        apiKey,
+        model,
+        prefs.customPrompt || '',
+        profile,
+        language,
+        whisperModel
+    );
+
+    if (success) {
+        cheatingDaddy.setStatus('DeepSeek Live');
+        return true;
+    }
+
+    cheatingDaddy.setStatus('error');
+    return false;
 }
 
 async function cancelLocalInitialization() {
@@ -1088,6 +1129,7 @@ const cheatingDaddy = {
     initializeGemini,
     initializeCloud,
     initializeLocal,
+    initializeDeepSeek,
     cancelLocalInitialization,
     startCapture,
     stopCapture,

@@ -20,6 +20,8 @@ let whisperProcess = null;
 let whisperBaseUrl = null;
 let localConversationHistory = [];
 let currentSystemPrompt = null;
+let currentWhisperLanguage = 'en';
+let transcriptionHandler = null;
 let isLocalActive = false;
 let initializationController = null;
 let llamaCacheSnapshot = new Set();
@@ -140,7 +142,7 @@ async function transcribeAudio(pcm16kBuffer) {
     formData.append('file', new Blob([wavBuffer], { type: 'audio/wav' }), 'speech.wav');
     formData.append('response_format', 'json');
     formData.append('temperature', '0.0');
-    formData.append('language', 'en');
+    formData.append('language', currentWhisperLanguage);
 
     const response = await fetch(`${whisperBaseUrl}/inference`, {
         method: 'POST',
@@ -176,7 +178,11 @@ async function handleSpeechEnd(audioData) {
         }
 
         sendToRenderer('update-status', 'Generating response...');
-        await sendToLlama(transcription);
+        if (transcriptionHandler) {
+            await transcriptionHandler(transcription);
+        } else {
+            await sendToLlama(transcription);
+        }
     } catch (error) {
         console.error('[LocalAI] Transcription error:', error);
         sendToRenderer('update-status', 'Transcription error: ' + error.message);
@@ -356,6 +362,27 @@ async function prepareNativeFiles(llamaModelReference, whisperModel, signal) {
     };
 }
 
+async function prepareWhisperFiles(whisperModel, signal) {
+    const binaryProgress = label => progress => {
+        sendToRenderer('update-status', formatDownloadStatus(label, progress));
+        sendDownloadProgress(label, progress);
+    };
+
+    sendDownloadProgress('Checking Whisper runner');
+    const whisperBinaryPath = await ensureNativeBinary('whisper', binaryProgress('Whisper runner'), signal);
+
+    let whisperModelPath;
+    sendToRenderer('whisper-downloading', true);
+    try {
+        sendDownloadProgress('Checking Whisper model');
+        whisperModelPath = await ensureWhisperModel(whisperModel, binaryProgress('Whisper model'), signal);
+    } finally {
+        sendToRenderer('whisper-downloading', false);
+    }
+
+    return { whisperBinaryPath, whisperModelPath };
+}
+
 function validatePreparedNativeFiles(nativeFiles) {
     const requiredFiles = [
         ['Llama runner', nativeFiles.llamaBinaryPath],
@@ -432,6 +459,8 @@ async function initializeLocalSession(model, whisperModel, profile, customPrompt
         llamaCacheSnapshot = getDirectoryEntries(path.join(getModelsDirectory(), 'llama'));
         currentSystemPrompt = getSystemPrompt(profile, customPrompt, false);
         llamaModel = model;
+        currentWhisperLanguage = 'en';
+        transcriptionHandler = null;
 
         const nativeFiles = await prepareNativeFiles(model, whisperModel, initializationController.signal);
         validatePreparedNativeFiles(nativeFiles);
@@ -477,6 +506,53 @@ async function initializeLocalSession(model, whisperModel, profile, customPrompt
     }
 }
 
+async function initializeWhisperSession(whisperModel, profile, customPrompt, language = 'en-US', onTranscription = null) {
+    console.log('[LocalAI] Initializing Whisper bridge:', { whisperModel, profile, language });
+    sendToRenderer('session-initializing', true);
+
+    try {
+        closeLocalSession();
+        initializationController = new AbortController();
+        llamaCacheSnapshot = getDirectoryEntries(path.join(getModelsDirectory(), 'llama'));
+        currentWhisperLanguage = /^(zh|cmn)/i.test(language || '') ? 'zh' : /^(en)/i.test(language || '') ? 'en' : 'auto';
+        transcriptionHandler = onTranscription;
+
+        const nativeFiles = await prepareWhisperFiles(whisperModel, initializationController.signal);
+
+        sendToRenderer('update-status', 'Starting Whisper...');
+        sendDownloadProgress('Starting Whisper');
+        await startWhisperServer(nativeFiles.whisperBinaryPath, nativeFiles.whisperModelPath);
+
+        isSpeaking = false;
+        speechBuffers = [];
+        silenceFrameCount = 0;
+        speechFrameCount = 0;
+        resampleRemainder = Buffer.alloc(0);
+        localConversationHistory = [];
+
+        initializeNewSession(profile, customPrompt);
+        isLocalActive = true;
+        initializationController = null;
+        sendToRenderer('local-ai-download-progress', { active: false });
+        sendToRenderer('session-initializing', false);
+        sendToRenderer('update-status', 'Whisper ready - Listening...');
+        console.log('[LocalAI] Whisper bridge initialized successfully');
+        return true;
+    } catch (error) {
+        const wasCancelled = error.name === 'AbortError' || initializationController?.signal.aborted;
+        if (wasCancelled) {
+            console.log('[LocalAI] Whisper initialization cancelled');
+        } else {
+            console.error('[LocalAI] Whisper initialization error:', error);
+        }
+        closeLocalSession();
+        sendToRenderer('local-ai-download-progress', { active: false });
+        sendToRenderer('session-initializing', false);
+        sendToRenderer('update-status', wasCancelled ? 'Whisper download cancelled' : 'Whisper error: ' + error.message);
+        return false;
+    }
+}
+
 function processLocalAudio(monoChunk24k) {
     if (!isLocalActive) return;
 
@@ -497,6 +573,8 @@ function closeLocalSession() {
     llamaBaseUrl = null;
     whisperBaseUrl = null;
     llamaModel = null;
+    currentWhisperLanguage = 'en';
+    transcriptionHandler = null;
     isSpeaking = false;
     speechBuffers = [];
     silenceFrameCount = 0;
@@ -591,6 +669,7 @@ async function sendLocalImage(base64Data, prompt) {
 
 module.exports = {
     initializeLocalSession,
+    initializeWhisperSession,
     cancelLocalInitialization,
     processLocalAudio,
     closeLocalSession,

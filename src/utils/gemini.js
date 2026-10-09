@@ -3,7 +3,15 @@ const { BrowserWindow, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const { saveDebugAudio } = require('../audioUtils');
 const { getSystemPrompt } = require('./prompts');
-const { getAvailableModel, incrementLimitCount, getApiKey, getGroqApiKey, incrementCharUsage, getConfig } = require('../storage');
+const {
+    getAvailableModel,
+    incrementLimitCount,
+    getApiKey,
+    getGroqApiKey,
+    getDeepSeekApiKey,
+    incrementCharUsage,
+    getConfig,
+} = require('../storage');
 const { connectCloud, sendCloudAudio, sendCloudText, sendCloudImage, closeCloud, isCloudActive, setOnTurnComplete } = require('./cloud');
 const { startTransportLog, logTransportEvent, closeTransportLog } = require('./transportLogger');
 
@@ -14,11 +22,14 @@ function getLocalAi() {
     return _localai;
 }
 
-// Provider mode: 'byok', 'cloud', or 'local'
+// Provider mode: 'byok', 'cloud', 'local', or 'deepseek'
 let currentProviderMode = 'byok';
 
 // Groq conversation history for context
 let groqConversationHistory = [];
+let deepseekConversationHistory = [];
+let currentDeepSeekApiKey = '';
+let currentDeepSeekModel = 'deepseek-flash';
 
 // Conversation tracking variables
 let currentSessionId = null;
@@ -209,6 +220,160 @@ async function getStoredSetting(key, defaultValue) {
 function hasGroqKey() {
     const key = getGroqApiKey();
     return key && key.trim() != '';
+}
+
+function getDeepSeekKey() {
+    return currentDeepSeekApiKey || getDeepSeekApiKey();
+}
+
+async function readDeepSeekStream(response, onText) {
+    if (!response.body) {
+        const payload = await response.json();
+        const text = payload.choices?.[0]?.message?.content || '';
+        if (text) onText(text);
+        return text;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let pending = '';
+    let fullText = '';
+
+    const consumeLine = line => {
+        if (!line.startsWith('data:')) return;
+        const data = line.slice(5).trim();
+        if (!data || data === '[DONE]') return;
+
+        try {
+            const event = JSON.parse(data);
+            const token = event.choices?.[0]?.delta?.content || '';
+            if (token) {
+                fullText += token;
+                onText(fullText);
+            }
+        } catch (error) {
+            logTransportEvent('deepseek.stream_parse_error', { error: error.message });
+        }
+    };
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        pending += decoder.decode(value, { stream: true });
+        const lines = pending.split(/\r?\n/);
+        pending = lines.pop() || '';
+        lines.forEach(consumeLine);
+    }
+
+    if (pending) consumeLine(pending);
+    return fullText;
+}
+
+async function requestDeepSeek(messages, onText) {
+    const apiKey = getDeepSeekKey();
+    if (!apiKey) {
+        throw new Error('No DeepSeek API key configured');
+    }
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: currentDeepSeekModel || 'deepseek-flash',
+            messages,
+            stream: true,
+            temperature: 0.4,
+            max_tokens: 2048,
+        }),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`DeepSeek API returned HTTP ${response.status}: ${errorText.slice(0, 500)}`);
+    }
+
+    return readDeepSeekStream(response, onText);
+}
+
+async function sendToDeepSeek(transcription) {
+    if (!transcription || transcription.trim() === '') return '';
+
+    const trimmedText = transcription.trim();
+    deepseekConversationHistory.push({ role: 'user', content: trimmedText });
+    if (deepseekConversationHistory.length > 20) {
+        deepseekConversationHistory = deepseekConversationHistory.slice(-20);
+    }
+
+    try {
+        let isFirst = true;
+        const fullText = await requestDeepSeek(
+            [{ role: 'system', content: currentSystemPrompt || 'You are a helpful assistant.' }, ...deepseekConversationHistory],
+            text => {
+                const displayText = stripThinkingTags(text);
+                if (displayText) {
+                    sendToRenderer(isFirst ? 'new-response' : 'update-response', displayText);
+                    isFirst = false;
+                }
+            }
+        );
+
+        const cleanedResponse = stripThinkingTags(fullText);
+        if (cleanedResponse) {
+            deepseekConversationHistory.push({ role: 'assistant', content: cleanedResponse });
+            saveConversationTurn(trimmedText, cleanedResponse);
+        }
+
+        sendToRenderer('update-status', 'Listening...');
+        return cleanedResponse;
+    } catch (error) {
+        console.error('Error calling DeepSeek API:', error.message);
+        sendToRenderer('update-status', 'DeepSeek error: ' + error.message);
+        return '';
+    }
+}
+
+async function sendImageToDeepSeek(base64Data, prompt) {
+    try {
+        let isFirst = true;
+        const messages = [
+            { role: 'system', content: currentSystemPrompt || 'You are a helpful assistant.' },
+            ...deepseekConversationHistory.slice(-10),
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: prompt || 'Analyze this image and provide the most useful concise answer.' },
+                    {
+                        type: 'image_url',
+                        image_url: { url: `data:image/jpeg;base64,${base64Data}` },
+                    },
+                ],
+            },
+        ];
+
+        const fullText = await requestDeepSeek(messages, text => {
+            const displayText = stripThinkingTags(text);
+            if (displayText) {
+                sendToRenderer(isFirst ? 'new-response' : 'update-response', displayText);
+                isFirst = false;
+            }
+        });
+        const cleanedResponse = stripThinkingTags(fullText);
+
+        if (!cleanedResponse) {
+            return { success: false, error: 'DeepSeek returned an empty response' };
+        }
+
+        saveScreenAnalysis(prompt, cleanedResponse, currentDeepSeekModel || 'deepseek-flash');
+        sendToRenderer('update-status', 'Listening...');
+        return { success: true, text: cleanedResponse, model: currentDeepSeekModel || 'deepseek-flash' };
+    } catch (error) {
+        console.error('Error calling DeepSeek vision API:', error.message);
+        sendToRenderer('update-status', 'DeepSeek error: ' + error.message);
+        return { success: false, error: error.message };
+    }
 }
 
 function sendFinalTranscriptionToGroq() {
@@ -923,6 +1088,8 @@ async function startMacOSAudioCapture(geminiSessionRef) {
                 sendCloudAudio(monoChunk);
             } else if (currentProviderMode === 'local') {
                 getLocalAi().processLocalAudio(monoChunk);
+            } else if (currentProviderMode === 'deepseek') {
+                getLocalAi().processLocalAudio(monoChunk);
             } else {
                 const base64Data = monoChunk.toString('base64');
                 sendAudioToGemini(base64Data, geminiSessionRef);
@@ -1082,6 +1249,40 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
         return false;
     });
 
+    ipcMain.handle(
+        'initialize-deepseek',
+        async (event, apiKey, model = 'deepseek-flash', customPrompt = '', profile = 'interview', language = 'en-US', whisperModel = 'tiny.en') => {
+            if (!apiKey || !apiKey.trim()) {
+                return false;
+            }
+
+            currentProviderMode = 'deepseek';
+            currentDeepSeekApiKey = apiKey.trim();
+            currentDeepSeekModel = model || 'deepseek-flash';
+            deepseekConversationHistory = [];
+
+            const basePrompt = getSystemPrompt(profile, customPrompt, false);
+            const deepSeekPrompt = /^(zh|cmn)/i.test(language || '')
+                ? `${basePrompt}\n\nAlways answer in Simplified Chinese unless the user explicitly asks for another language.`
+                : basePrompt;
+
+            const success = await getLocalAi().initializeWhisperSession(
+                whisperModel,
+                profile,
+                customPrompt,
+                language,
+                transcription => sendToDeepSeek(transcription)
+            );
+            if (!success) {
+                currentProviderMode = 'byok';
+                currentDeepSeekApiKey = '';
+            } else {
+                currentSystemPrompt = deepSeekPrompt;
+            }
+            return success;
+        }
+    );
+
     ipcMain.handle('initialize-local', async (event, localLlmModel, whisperModel, profile, customPrompt) => {
         currentProviderMode = 'local';
         const success = await getLocalAi().initializeLocalSession(localLlmModel, whisperModel, profile, customPrompt);
@@ -1120,6 +1321,16 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 return { success: false, error: error.message };
             }
         }
+        if (currentProviderMode === 'deepseek') {
+            try {
+                const pcmBuffer = Buffer.from(data, 'base64');
+                getLocalAi().processLocalAudio(pcmBuffer);
+                return { success: true };
+            } catch (error) {
+                console.error('Error sending DeepSeek audio:', error);
+                return { success: false, error: error.message };
+            }
+        }
         if (!geminiSessionRef.current) return { success: false, error: 'No active Gemini session' };
         try {
             process.stdout.write('.');
@@ -1152,6 +1363,16 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 return { success: true };
             } catch (error) {
                 console.error('Error sending local mic audio:', error);
+                return { success: false, error: error.message };
+            }
+        }
+        if (currentProviderMode === 'deepseek') {
+            try {
+                const pcmBuffer = Buffer.from(data, 'base64');
+                getLocalAi().processLocalAudio(pcmBuffer);
+                return { success: true };
+            } catch (error) {
+                console.error('Error sending DeepSeek mic audio:', error);
                 return { success: false, error: error.message };
             }
         }
@@ -1197,6 +1418,10 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 return result;
             }
 
+            if (currentProviderMode === 'deepseek') {
+                return await sendImageToDeepSeek(data, prompt);
+            }
+
             const result = hasGroqKey() ? await sendImageToGroq(data, prompt) : await sendImageToGeminiHttp(data, prompt);
             return result;
         } catch (error) {
@@ -1229,6 +1454,11 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 console.error('Error sending local text:', error);
                 return { success: false, error: error.message };
             }
+        }
+
+        if (currentProviderMode === 'deepseek') {
+            const response = await sendToDeepSeek(text.trim());
+            return response ? { success: true, text: response, model: currentDeepSeekModel } : { success: false, error: 'DeepSeek returned no response' };
         }
 
         if (!geminiSessionRef.current) return { success: false, error: 'No active Gemini session' };
@@ -1289,6 +1519,15 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
             if (currentProviderMode === 'local') {
                 getLocalAi().closeLocalSession();
+                currentProviderMode = 'byok';
+                closeTransportLog();
+                return { success: true };
+            }
+
+            if (currentProviderMode === 'deepseek') {
+                getLocalAi().closeLocalSession();
+                currentDeepSeekApiKey = '';
+                deepseekConversationHistory = [];
                 currentProviderMode = 'byok';
                 closeTransportLog();
                 return { success: true };

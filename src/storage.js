@@ -10,6 +10,7 @@ const DEFAULT_CONFIG = {
     onboarded: false,
     layout: 'normal',
     geminiLiveModel: 'gemini-3.1-flash-live-preview',
+    deepseekModel: 'deepseek-flash',
     groqModel: 'qwen/qwen3.6-27b',
     groqImageModel: 'qwen/qwen3.6-27b',
     disableGroqThinking: true,
@@ -18,6 +19,7 @@ const DEFAULT_CONFIG = {
 const DEFAULT_CREDENTIALS = {
     apiKey: '',
     groqApiKey: '',
+    deepseekApiKey: '',
 };
 
 const DEFAULT_PREFERENCES = {
@@ -214,6 +216,14 @@ function getGroqApiKey() {
 
 function setGroqApiKey(groqApiKey) {
     return setCredentials({ groqApiKey });
+}
+
+function getDeepSeekApiKey() {
+    return getCredentials().deepseekApiKey || '';
+}
+
+function setDeepSeekApiKey(deepseekApiKey) {
+    return setCredentials({ deepseekApiKey });
 }
 
 // ============ PREFERENCES ============
@@ -520,6 +530,8 @@ module.exports = {
     setApiKey,
     getGroqApiKey,
     setGroqApiKey,
+    getDeepSeekApiKey,
+    setDeepSeekApiKey,
 
     // Preferences
     getPreferences,

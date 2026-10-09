@@ -47,6 +47,12 @@ const BINARY_RELEASES = {
 };
 
 const WHISPER_MODELS = {
+    // Multilingual checkpoint for Chinese and other non-English audio.
+    tiny: {
+        filename: 'ggml-tiny.bin',
+        url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin',
+        sha256: 'be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21',
+    },
     'tiny.en': {
         filename: 'ggml-tiny.en.bin',
         url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin',

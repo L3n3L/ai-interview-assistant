@@ -19,6 +19,7 @@ A real-time AI assistant that provides contextual help during video calls, inter
 ## Features
 
 - **Live AI Assistance**: Real-time help powered by Google Gemini 2.0 Flash Live
+- **DeepSeek Flash mode**: Use DeepSeek for text and screenshot replies while keeping speech-to-text local with Whisper
 - **Screen & Audio Capture**: Analyzes what you see and hear for contextual responses
 - **Multiple Profiles**: Interview, Sales Call, Business Meeting, Presentation, Negotiation
 - **Transparent Overlay**: Always-on-top window that can be positioned anywhere
@@ -27,9 +28,15 @@ A real-time AI assistant that provides contextual help during video calls, inter
 
 ## Setup
 
-1. **Get a Gemini API Key**: Visit [Google AI Studio](https://aistudio.google.com/apikey)
+1. **Choose a provider**: Gemini/Groq, DeepSeek Flash, or Local AI
 2. **Install Dependencies**: `npm install`
 3. **Run the App**: `npm start`
+
+### DeepSeek Flash mode
+
+DeepSeek mode uses the OpenAI-compatible DeepSeek Chat Completions endpoint for text and image replies. It starts the local Whisper runner for audio transcription, then sends only the recognized text to DeepSeek. The default reply model is `deepseek-flash`.
+
+Enter the key in the app’s DeepSeek settings. API keys are stored in the local data directory and are not part of the source tree.
 
 ### Local data location (Windows)
 
@@ -63,6 +70,6 @@ To use a different location, set `CHEATING_DADDY_DATA_DIR` before starting the a
 ## Requirements
 
 - Electron-compatible OS (macOS, Windows, Linux)
-- Gemini API key
+- Gemini or DeepSeek API key, depending on the selected mode
 - Screen recording permissions
 - Microphone/audio permissions

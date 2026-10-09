@@ -626,6 +626,24 @@ export class CheatingDaddyApp extends LitElement {
                 }
                 return;
             }
+        } else if (providerMode === 'deepseek') {
+            const creds = await cheatingDaddy.storage.getCredentials();
+            if (!creds.deepseekApiKey || creds.deepseekApiKey.trim() === '') {
+                const mainView = this.shadowRoot.querySelector('main-view');
+                if (mainView && mainView.triggerApiKeyError) {
+                    mainView.triggerApiKeyError();
+                }
+                return;
+            }
+
+            const success = await cheatingDaddy.initializeDeepSeek(this.selectedProfile, this.selectedLanguage);
+            if (!success) {
+                const mainView = this.shadowRoot.querySelector('main-view');
+                if (mainView && mainView.triggerApiKeyError) {
+                    mainView.triggerApiKeyError();
+                }
+                return;
+            }
         } else {
             const apiKey = await cheatingDaddy.storage.getApiKey();
             if (!apiKey || apiKey === '') {
