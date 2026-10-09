@@ -1412,11 +1412,11 @@ export class MainView extends LitElement {
                     this._mode === 'local' || this._mode === 'deepseek'
                         ? html`
                               <div class="title-row">
-                                  <div class="page-title">Cheating Daddy <span class="mode-suffix">${this._mode === 'deepseek' ? 'DeepSeek' : '本地 AI'}</span></div>
+                                  <div class="page-title">AI面试助手 <span class="mode-suffix">${this._mode === 'deepseek' ? 'DeepSeek' : '本地 AI'}</span></div>
                                   ${this._mode === 'local' ? html`<button class="help-btn" @click=${this._openLocalHelp} aria-label="打开本地 AI 帮助">${helpIcon}</button>` : ''}
                               </div>
                           `
-                        : html` <div class="page-title">${html`Cheating Daddy <span class="mode-suffix">BYOK</span>`}</div> `
+                        : html` <div class="page-title">${html`AI面试助手 <span class="mode-suffix">BYOK</span>`}</div> `
                 }
                 <div class="page-subtitle">
                     ${this._mode === 'byok' ? '使用你自己的 API 密钥' : this._mode === 'deepseek' ? 'DeepSeek 负责回复，本地负责语音转写' : '在本机运行模型'}
@@ -1443,14 +1443,14 @@ export class MainView extends LitElement {
                         <div class="help-section">
                             <div class="help-section-title">原生本地 AI</div>
                             <div class="help-section-text">
-                                Cheating Daddy 直接运行 llama.cpp 和 whisper.cpp。所有数据都留在本机，不需要外部 AI 服务或安装 Ollama。
+                                AI面试助手直接运行 llama.cpp 和 whisper.cpp。所有数据都留在本机，不需要外部 AI 服务或安装 Ollama。
                             </div>
                         </div>
 
                         <div class="help-section">
                             <div class="help-section-title">自动配置</div>
                             <div class="help-section-text">
-                                首次使用时会自动下载并校验原生运行器、选定的 Whisper 模型和语言模型，并存放在 Cheating Daddy 数据目录中。
+                                首次使用时会自动下载并校验原生运行器、选定的 Whisper 模型和语言模型，并存放在本地数据目录中。
                             </div>
                         </div>
 

@@ -451,7 +451,7 @@ export class CheatingDaddyApp extends LitElement {
             this._localVersion = await cheatingDaddy.getVersion();
             this.requestUpdate();
 
-            const res = await fetch('https://raw.githubusercontent.com/sohzm/cheating-daddy/refs/heads/master/package.json');
+            const res = await fetch('https://raw.githubusercontent.com/L3n3L/cheating-daddy-cn/main/package.json');
             if (!res.ok) return;
             const remote = await res.json();
             const remoteVersion = remote.version;
@@ -699,7 +699,7 @@ export class CheatingDaddyApp extends LitElement {
     async handleAPIKeyHelp() {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            await ipcRenderer.invoke('open-external', 'https://cheatingdaddy.com/help/api-key');
+            await ipcRenderer.invoke('open-external', 'https://platform.deepseek.com/api_keys');
         }
     }
 
@@ -934,7 +934,7 @@ export class CheatingDaddyApp extends LitElement {
         return html`
             <div class="sidebar ${this._isLiveMode() ? 'hidden' : ''}">
                 <div class="sidebar-brand">
-                    <h1>Cheating Daddy</h1>
+                    <h1>AI面试助手</h1>
                 </div>
                 <nav class="sidebar-nav">
                     ${items.map(
@@ -953,7 +953,7 @@ export class CheatingDaddyApp extends LitElement {
                     ${
                         this._updateAvailable
                             ? html`
-                                  <button class="update-btn" @click=${() => this.handleExternalLinkClick('https://cheatingdaddy.com/download')}>
+                                  <button class="update-btn" @click=${() => this.handleExternalLinkClick('https://github.com/L3n3L/cheating-daddy-cn/releases')}>
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                           <path
                                               fill="none"
@@ -1038,4 +1038,4 @@ export class CheatingDaddyApp extends LitElement {
     }
 }
 
-customElements.define('cheating-daddy-app', CheatingDaddyApp);
+customElements.define('ai-interview-assistant-app', CheatingDaddyApp);

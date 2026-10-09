@@ -898,7 +898,7 @@ function handleShortcut(shortcutKey) {
 }
 
 // Create reference to the main app element
-const cheatingDaddyApp = document.querySelector('cheating-daddy-app');
+const aiInterviewAssistantApp = document.querySelector('ai-interview-assistant-app');
 
 // ============ THEME SYSTEM ============
 const theme = {
@@ -1184,17 +1184,17 @@ const cheatingDaddy = {
     getVersion: async () => ipcRenderer.invoke('get-app-version'),
 
     // Element access
-    element: () => cheatingDaddyApp,
-    e: () => cheatingDaddyApp,
+    element: () => aiInterviewAssistantApp,
+    e: () => aiInterviewAssistantApp,
 
     // App state functions - access properties directly from the app element
-    getCurrentView: () => cheatingDaddyApp.currentView,
-    getLayoutMode: () => cheatingDaddyApp.layoutMode,
+    getCurrentView: () => aiInterviewAssistantApp.currentView,
+    getLayoutMode: () => aiInterviewAssistantApp.layoutMode,
 
     // Status and response functions
-    setStatus: text => cheatingDaddyApp.setStatus(text),
-    addNewResponse: response => cheatingDaddyApp.addNewResponse(response),
-    updateCurrentResponse: response => cheatingDaddyApp.updateCurrentResponse(response),
+    setStatus: text => aiInterviewAssistantApp.setStatus(text),
+    addNewResponse: response => aiInterviewAssistantApp.addNewResponse(response),
+    updateCurrentResponse: response => aiInterviewAssistantApp.updateCurrentResponse(response),
 
     // Core functionality
     initializeGemini,

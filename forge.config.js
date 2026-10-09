@@ -5,8 +5,9 @@ module.exports = {
     packagerConfig: {
         asar: true,
         extraResource: ['./src/assets/SystemAudioDump'],
-        name: 'Cheating Daddy',
-        icon: 'src/assets/logo',
+        name: 'ai-interview-assistant',
+        // Do not ship the unused upstream logo assets in the packaged app.
+        ignore: /(?:^|[\\/])logo\.(?:icns|ico|png)$/,
         // use `security find-identity -v -p codesigning` to find your identity
         // for macos signing
         // also fuck apple
@@ -30,9 +31,9 @@ module.exports = {
         {
             name: '@electron-forge/maker-squirrel',
             config: {
-                name: 'cheating-daddy',
-                productName: 'Cheating Daddy',
-                shortcutName: 'Cheating Daddy',
+                name: 'ai-interview-assistant',
+                productName: 'AI面试助手',
+                shortcutName: 'AI面试助手',
                 createDesktopShortcut: true,
                 createStartMenuShortcut: true,
             },
@@ -46,12 +47,11 @@ module.exports = {
             platforms: ['linux'],
             config: {
                 options: {
-                    name: 'Cheating Daddy',
-                    productName: 'Cheating Daddy',
+                    name: 'ai-interview-assistant',
+                    productName: 'AI面试助手',
                     genericName: 'AI Assistant',
                     description: 'AI assistant for interviews and learning',
                     categories: ['Development', 'Education'],
-                    icon: 'src/assets/logo.png',
                 },
             },
         },

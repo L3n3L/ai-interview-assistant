@@ -1,8 +1,8 @@
 {
-    "name": "cheating-daddy",
-    "productName": "cheating-daddy",
+    "name": "ai-interview-assistant",
+    "productName": "AI面试助手",
     "version": "0.8.0",
-    "description": "cheating daddy",
+    "description": "Chinese AI interview assistant with DeepSeek and local Whisper support",
     "main": "src/index.js",
     "scripts": {
         "start": "electron-forge start",
@@ -12,11 +12,11 @@
         "lint": "echo \"No linting configured\""
     },
     "keywords": [
-        "cheating daddy",
-        "cheating daddy ai",
-        "cheating daddy ai assistant",
-        "cheating daddy ai assistant for interviews",
-        "cheating daddy ai assistant for interviews"
+        "ai interview assistant",
+        "interview assistant",
+        "deepseek interview assistant",
+        "中文面试助手",
+        "AI面试助手"
     ],
     "author": {
         "name": "L3n3L",

@@ -1,6 +1,10 @@
 # Fork and licensing notice
 
-This repository is a modified fork of [sohzm/cheating-daddy](https://github.com/sohzm/cheating-daddy).
+This repository is an unofficial, modified and rebranded fork of
+[sohzm/cheating-daddy](https://github.com/sohzm/cheating-daddy).
+
+The distributed product name is **AI面试助手**. It is not affiliated with or endorsed by the
+upstream project or its contributors.
 
 The upstream project and this fork are licensed under the GNU General Public License, version 3.0
 (GPL-3.0). The original `LICENSE` file must remain with this project.
@@ -14,6 +18,7 @@ This fork adds or maintains the following changes:
 1. Chinese interface and Chinese speech-language defaults.
 2. DeepSeek API-key compatibility, using the OpenAI-compatible DeepSeek Chat Completions API.
 3. Local audio and transport timing diagnostics for troubleshooting the speech-to-answer pipeline.
+4. Rebranding and Chinese product presentation as **AI面试助手**.
 
 These changes are distributed under GPL-3.0 together with the rest of the combined work. When
 redistributing this fork, keep this notice, the upstream attribution, and the `LICENSE` file.

@@ -312,7 +312,7 @@ export class OnboardingView extends LitElement {
         if (this.currentSlide === 0) {
             return html`
                 <div class="slide">
-                    <div class="slide-title">Cheating Daddy</div>
+                    <div class="slide-title">AI面试助手</div>
                     <div class="slide-text">实时 AI 助手，可在面试、会议和考试期间聆听、观察并提供帮助。</div>
                     <div class="actions">
                         <button class="btn-primary" @click=${() => { this.currentSlide = 1; }}>继续</button>
