@@ -147,7 +147,7 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
-async function initializeGemini(profile = 'interview', language = 'en-US') {
+async function initializeGemini(profile = 'interview', language = 'cmn-CN') {
     const apiKey = await storage.getApiKey();
     if (apiKey) {
         const prefs = await storage.getPreferences();
@@ -163,7 +163,7 @@ async function initializeGemini(profile = 'interview', language = 'en-US') {
 async function initializeLocal(profile = 'interview') {
     const prefs = await storage.getPreferences();
     const localLlmModel = prefs.localLlmModel || 'unsloth/Qwen3.5-4B-GGUF:Q4_K_M';
-    const whisperModel = prefs.whisperModel || 'tiny.en';
+    const whisperModel = 'tiny';
     const customPrompt = prefs.customPrompt || '';
 
     const success = await ipcRenderer.invoke('initialize-local', localLlmModel, whisperModel, profile, customPrompt);
@@ -176,7 +176,7 @@ async function initializeLocal(profile = 'interview') {
     }
 }
 
-async function initializeDeepSeek(profile = 'interview', language = 'en-US') {
+async function initializeDeepSeek(profile = 'interview', language = 'cmn-CN') {
     const creds = await storage.getCredentials();
     const apiKey = creds.deepseekApiKey || '';
     if (!apiKey.trim()) {
@@ -185,11 +185,7 @@ async function initializeDeepSeek(profile = 'interview', language = 'en-US') {
     }
 
     const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
-    const configuredWhisperModel = prefs.whisperModel || 'tiny.en';
-    const isChinese = /^(zh|cmn)/i.test(language || '');
-    // English-only Whisper checkpoints cannot transcribe Chinese. The multilingual
-    // tiny checkpoint is downloaded and verified automatically when needed.
-    const whisperModel = isChinese && configuredWhisperModel.endsWith('.en') ? 'tiny' : configuredWhisperModel;
+    const whisperModel = 'tiny';
     const model = config.deepseekModel || 'deepseek-flash';
     const success = await ipcRenderer.invoke(
         'initialize-deepseek',

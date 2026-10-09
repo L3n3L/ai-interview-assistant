@@ -1251,7 +1251,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     ipcMain.handle(
         'initialize-deepseek',
-        async (event, apiKey, model = 'deepseek-flash', customPrompt = '', profile = 'interview', language = 'en-US', whisperModel = 'tiny.en') => {
+        async (event, apiKey, model = 'deepseek-flash', customPrompt = '', profile = 'interview', language = 'cmn-CN', whisperModel = 'tiny') => {
             if (!apiKey || !apiKey.trim()) {
                 return false;
             }

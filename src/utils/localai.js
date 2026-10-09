@@ -459,7 +459,7 @@ async function initializeLocalSession(model, whisperModel, profile, customPrompt
         llamaCacheSnapshot = getDirectoryEntries(path.join(getModelsDirectory(), 'llama'));
         currentSystemPrompt = getSystemPrompt(profile, customPrompt, false);
         llamaModel = model;
-        currentWhisperLanguage = 'en';
+        currentWhisperLanguage = 'zh';
         transcriptionHandler = null;
 
         const nativeFiles = await prepareNativeFiles(model, whisperModel, initializationController.signal);
@@ -506,7 +506,7 @@ async function initializeLocalSession(model, whisperModel, profile, customPrompt
     }
 }
 
-async function initializeWhisperSession(whisperModel, profile, customPrompt, language = 'en-US', onTranscription = null) {
+async function initializeWhisperSession(whisperModel, profile, customPrompt, language = 'cmn-CN', onTranscription = null) {
     console.log('[LocalAI] Initializing Whisper bridge:', { whisperModel, profile, language });
     sendToRenderer('session-initializing', true);
 
@@ -573,7 +573,7 @@ function closeLocalSession() {
     llamaBaseUrl = null;
     whisperBaseUrl = null;
     llamaModel = null;
-    currentWhisperLanguage = 'en';
+    currentWhisperLanguage = 'zh';
     transcriptionHandler = null;
     isSpeaking = false;
     speechBuffers = [];

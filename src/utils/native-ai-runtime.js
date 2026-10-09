@@ -50,23 +50,8 @@ const WHISPER_MODELS = {
     // Multilingual checkpoint for Chinese and other non-English audio.
     tiny: {
         filename: 'ggml-tiny.bin',
-        url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin',
+        url: 'https://hf-mirror.com/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin',
         sha256: 'be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21',
-    },
-    'tiny.en': {
-        filename: 'ggml-tiny.en.bin',
-        url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin',
-        sha256: '921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f',
-    },
-    'base.en': {
-        filename: 'ggml-base.en.bin',
-        url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
-        sha256: 'a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002',
-    },
-    'small.en': {
-        filename: 'ggml-small.en.bin',
-        url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin',
-        sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d',
     },
 };
 
@@ -178,12 +163,15 @@ async function ensureNativeBinary(type, onProgress, signal) {
 
 function normalizeWhisperModel(modelName) {
     const legacyModels = {
-        'Xenova/whisper-tiny': 'tiny.en',
-        'Xenova/whisper-base': 'base.en',
-        'Xenova/whisper-small': 'small.en',
+        'Xenova/whisper-tiny': 'tiny',
+        'Xenova/whisper-base': 'tiny',
+        'Xenova/whisper-small': 'tiny',
+        'tiny.en': 'tiny',
+        'base.en': 'tiny',
+        'small.en': 'tiny',
     };
 
-    return legacyModels[modelName] || modelName || 'tiny.en';
+    return legacyModels[modelName] || modelName || 'tiny';
 }
 
 async function ensureWhisperModel(modelName, onProgress, signal) {

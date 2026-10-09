@@ -424,7 +424,7 @@ export class CheatingDaddyApp extends LitElement {
         this.isRecording = false;
         this.sessionActive = false;
         this.selectedProfile = 'interview';
-        this.selectedLanguage = 'en-US';
+        this.selectedLanguage = 'cmn-CN';
         this.selectedScreenshotInterval = '5';
         this.selectedImageQuality = 'medium';
         this.layoutMode = 'normal';
@@ -475,7 +475,7 @@ export class CheatingDaddyApp extends LitElement {
 
             this.currentView = config.onboarded ? 'main' : 'onboarding';
             this.selectedProfile = prefs.selectedProfile || 'interview';
-            this.selectedLanguage = prefs.selectedLanguage || 'en-US';
+            this.selectedLanguage = prefs.selectedLanguage || 'cmn-CN';
             this.selectedScreenshotInterval = prefs.selectedScreenshotInterval || '5';
             this.selectedImageQuality = prefs.selectedImageQuality || 'medium';
             this.layoutMode = config.layout || 'normal';

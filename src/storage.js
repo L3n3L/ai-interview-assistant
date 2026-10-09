@@ -26,7 +26,7 @@ const DEFAULT_PREFERENCES = {
     customPrompt: '',
     providerMode: 'byok',
     selectedProfile: 'interview',
-    selectedLanguage: 'en-US',
+    selectedLanguage: 'cmn-CN',
     selectedScreenshotInterval: '5',
     selectedImageQuality: 'medium',
     advancedMode: false,
@@ -35,7 +35,7 @@ const DEFAULT_PREFERENCES = {
     backgroundTransparency: 0.8,
     googleSearchEnabled: false,
     localLlmModel: 'unsloth/Qwen3.5-4B-GGUF:Q4_K_M',
-    whisperModel: 'tiny.en',
+    whisperModel: 'tiny',
 };
 
 const DEFAULT_KEYBINDS = null; // null means use system defaults
@@ -231,13 +231,13 @@ function setDeepSeekApiKey(deepseekApiKey) {
 function getPreferences() {
     const saved = readJsonFile(getPreferencesPath(), {});
     const preferences = { ...DEFAULT_PREFERENCES, ...saved };
-    const legacyWhisperModels = {
-        'Xenova/whisper-tiny': 'tiny.en',
-        'Xenova/whisper-base': 'base.en',
-        'Xenova/whisper-small': 'small.en',
-    };
-
-    preferences.whisperModel = legacyWhisperModels[preferences.whisperModel] || preferences.whisperModel;
+    const legacyWhisperModels = new Set(['Xenova/whisper-tiny', 'Xenova/whisper-base', 'Xenova/whisper-small', 'tiny.en', 'base.en', 'small.en']);
+    if (legacyWhisperModels.has(preferences.whisperModel) || preferences.whisperModel !== 'tiny') {
+        preferences.whisperModel = 'tiny';
+    }
+    if (/^en-/i.test(preferences.selectedLanguage || '')) {
+        preferences.selectedLanguage = 'cmn-CN';
+    }
     return preferences;
 }
 

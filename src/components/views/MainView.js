@@ -740,7 +740,7 @@ export class MainView extends LitElement {
         this._showLocalHelp = false;
         this._localLlmModel = 'unsloth/Qwen3.5-4B-GGUF:Q4_K_M';
         this._useCustomLocalLlmModel = false;
-        this._whisperModel = 'tiny.en';
+        this._whisperModel = 'tiny';
 
         this._animId = null;
         this._time = 0;
@@ -781,7 +781,7 @@ export class MainView extends LitElement {
             // Load local AI settings
             this._localLlmModel = prefs.localLlmModel || 'unsloth/Qwen3.5-4B-GGUF:Q4_K_M';
             this._useCustomLocalLlmModel = !LOCAL_LLM_PRESETS.some(preset => preset.value === this._localLlmModel);
-            this._whisperModel = prefs.whisperModel || 'tiny.en';
+            this._whisperModel = 'tiny';
 
             this.requestUpdate();
         } catch (e) {
@@ -1306,11 +1306,8 @@ export class MainView extends LitElement {
                         <label class="form-label">Whisper 模型</label>
                         <select .value=${this._whisperModel} @change=${e => this._saveWhisperModel(e.target.value)}>
                             <option value="tiny" ?selected=${this._whisperModel === 'tiny'}>Tiny 多语言（75 MB，支持中文）</option>
-                            <option value="tiny.en" ?selected=${this._whisperModel === 'tiny.en'}>Tiny 英语（75 MB，速度最快）</option>
-                            <option value="base.en" ?selected=${this._whisperModel === 'base.en'}>Base 英语（142 MB）</option>
-                            <option value="small.en" ?selected=${this._whisperModel === 'small.en'}>Small 英语（466 MB，准确度最高）</option>
                         </select>
-                        <div class="form-hint">选择中文后，英语专用模型会自动切换为多语言 Tiny。</div>
+                        <div class="form-hint">语音会在本机使用中文多语言 Tiny 模型转写。</div>
                     </div>
                 </div>
             </details>
@@ -1379,9 +1376,6 @@ export class MainView extends LitElement {
                         </div>
                         <select .value=${this._whisperModel} @change=${e => this._saveWhisperModel(e.target.value)}>
                             <option value="tiny" ?selected=${this._whisperModel === 'tiny'}>Tiny 多语言（75 MB，支持中文）</option>
-                            <option value="tiny.en" ?selected=${this._whisperModel === 'tiny.en'}>Tiny 英语（75 MB，速度最快）</option>
-                            <option value="base.en" ?selected=${this._whisperModel === 'base.en'}>Base 英语（142 MB）</option>
-                            <option value="small.en" ?selected=${this._whisperModel === 'small.en'}>Small 英语（466 MB，准确度最高）</option>
                         </select>
                         <div class="form-hint">${this.whisperDownloading ? '正在下载模型……' : '首次使用时自动下载'}</div>
                     </div>
