@@ -161,7 +161,7 @@ export class AppHeader extends LitElement {
     async _checkForUpdates() {
         try {
             const currentVersion = await cheatingDaddy.getVersion();
-            const response = await fetch('https://raw.githubusercontent.com/L3n3L/cheating-daddy-cn/main/package.json');
+            const response = await fetch('https://raw.githubusercontent.com/L3n3L/ai-interview-assistant/main/package.json');
             if (!response.ok) return;
 
             const remotePackage = await response.json();
@@ -190,7 +190,7 @@ export class AppHeader extends LitElement {
 
     async _openUpdatePage() {
         const { ipcRenderer } = require('electron');
-        await ipcRenderer.invoke('open-external', 'https://github.com/L3n3L/cheating-daddy-cn/releases');
+        await ipcRenderer.invoke('open-external', 'https://github.com/L3n3L/ai-interview-assistant/releases');
     }
 
     disconnectedCallback() {

@@ -451,7 +451,7 @@ export class CheatingDaddyApp extends LitElement {
             this._localVersion = await cheatingDaddy.getVersion();
             this.requestUpdate();
 
-            const res = await fetch('https://raw.githubusercontent.com/L3n3L/cheating-daddy-cn/main/package.json');
+            const res = await fetch('https://raw.githubusercontent.com/L3n3L/ai-interview-assistant/main/package.json');
             if (!res.ok) return;
             const remote = await res.json();
             const remoteVersion = remote.version;
@@ -953,7 +953,7 @@ export class CheatingDaddyApp extends LitElement {
                     ${
                         this._updateAvailable
                             ? html`
-                                  <button class="update-btn" @click=${() => this.handleExternalLinkClick('https://github.com/L3n3L/cheating-daddy-cn/releases')}>
+                                  <button class="update-btn" @click=${() => this.handleExternalLinkClick('https://github.com/L3n3L/ai-interview-assistant/releases')}>
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                           <path
                                               fill="none"
