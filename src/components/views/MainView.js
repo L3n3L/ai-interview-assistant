@@ -1,16 +1,16 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 
 const LOCAL_LLM_PRESETS = [
-    { value: 'unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M', label: 'Qwen 3.5 0.8B Q4 — 0.74 GB · Fastest' },
+    { value: 'unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M', label: 'Qwen 3.5 0.8B Q4 — 0.74 GB · 最快' },
     { value: 'unsloth/Qwen3.5-0.8B-GGUF:Q8_0', label: 'Qwen 3.5 0.8B Q8 — 1.02 GB' },
     { value: 'unsloth/Qwen3.5-2B-GGUF:Q4_K_M', label: 'Qwen 3.5 2B Q4 — 1.95 GB' },
     { value: 'unsloth/Qwen3.5-2B-GGUF:Q8_0', label: 'Qwen 3.5 2B Q8 — 2.68 GB' },
-    { value: 'unsloth/Qwen3.5-4B-GGUF:Q4_K_M', label: 'Qwen 3.5 4B Q4 — 3.42 GB · Recommended' },
+    { value: 'unsloth/Qwen3.5-4B-GGUF:Q4_K_M', label: 'Qwen 3.5 4B Q4 — 3.42 GB · 推荐' },
     { value: 'unsloth/Qwen3.5-4B-GGUF:Q8_0', label: 'Qwen 3.5 4B Q8 — 5.16 GB' },
     { value: 'unsloth/Qwen3.5-9B-GGUF:Q4_K_M', label: 'Qwen 3.5 9B Q4 — 6.60 GB' },
     { value: 'unsloth/Qwen3.5-9B-GGUF:Q8_0', label: 'Qwen 3.5 9B Q8 — 10.45 GB' },
     { value: 'unsloth/Qwen3.5-27B-GGUF:Q4_K_M', label: 'Qwen 3.5 27B Q4 — 17.67 GB' },
-    { value: 'unsloth/Qwen3.5-35B-A3B-GGUF:Q4_K_M', label: 'Qwen 3.5 35B-A3B Q4 — 22.92 GB · Largest' },
+    { value: 'unsloth/Qwen3.5-35B-A3B-GGUF:Q4_K_M', label: 'Qwen 3.5 35B-A3B Q4 — 22.92 GB · 最大' },
 ];
 
 export class MainView extends LitElement {
@@ -1140,7 +1140,7 @@ export class MainView extends LitElement {
                         : ''
                 }
                 <span class="btn-label">
-                    ${isDownloading ? (hasPercentage ? `${percentage}%` : 'Preparing...') : 'Start Session'}
+                    ${isDownloading ? (hasPercentage ? `${percentage}%` : '准备中……') : '开始会话'}
                     ${isDownloading ? '' : html`<span class="shortcut-hint">${isMac ? cmdIcon : ctrlIcon}${enterIcon}</span>`}
                 </span>
             </button>
@@ -1148,8 +1148,8 @@ export class MainView extends LitElement {
                 isDownloading
                     ? html`
                           <div class="download-controls">
-                              <span>Downloading: ${this.downloadProgress.label || 'Local AI files'}</span>
-                              <button class="download-cancel" @click=${() => this.onCancelDownload()}>Cancel</button>
+                              <span>正在下载：${this.downloadProgress.label || '本地 AI 文件'}</span>
+                              <button class="download-cancel" @click=${() => this.onCancelDownload()}>取消</button>
                           </div>
                       `
                     : ''
@@ -1186,28 +1186,28 @@ export class MainView extends LitElement {
             <details class="config-section">
                 <summary class="config-summary">
                     <span class="config-summary-text">
-                        <span class="config-summary-title">Transcription</span>
-                        <span class="config-summary-description">Gemini Live connection</span>
+                        <span class="config-summary-title">语音转写</span>
+                        <span class="config-summary-description">Gemini 实时连接</span>
                     </span>
                     ${this._renderConfigChevron()}
                 </summary>
                 <div class="config-content">
                     <div class="form-group">
-                        <label class="form-label">Gemini API Key</label>
+                        <label class="form-label">Gemini API 密钥</label>
                         <input
                             type="password"
-                            placeholder="Required"
+                            placeholder="必填"
                             .value=${this._geminiKey}
                             @input=${e => this._saveGeminiKey(e.target.value)}
                             class=${this._keyError ? 'error' : ''}
                         />
                         <div class="form-hint">
-                            <span class="link" @click=${() => this.onExternalLink('https://aistudio.google.com/apikey')}>Get Gemini key</span>
+                            <span class="link" @click=${() => this.onExternalLink('https://aistudio.google.com/apikey')}>获取 Gemini 密钥</span>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Gemini Live Model</label>
+                        <label class="form-label">Gemini 实时模型</label>
                         <input type="text" .value=${this._geminiLiveModel} @input=${e => this._saveGeminiLiveModel(e.target.value)} />
                     </div>
                 </div>
@@ -1216,27 +1216,27 @@ export class MainView extends LitElement {
             <details class="config-section">
                 <summary class="config-summary">
                     <span class="config-summary-text">
-                        <span class="config-summary-title">AI responses</span>
-                        <span class="config-summary-description">Groq key and response model</span>
+                        <span class="config-summary-title">AI 回复</span>
+                        <span class="config-summary-description">Groq 密钥和回复模型</span>
                     </span>
                     ${this._renderConfigChevron()}
                 </summary>
                 <div class="config-content">
                     <div class="form-group">
-                        <label class="form-label">Groq API Key</label>
-                        <input type="password" placeholder="Optional" .value=${this._groqKey} @input=${e => this._saveGroqKey(e.target.value)} />
+                        <label class="form-label">Groq API 密钥</label>
+                        <input type="password" placeholder="可选" .value=${this._groqKey} @input=${e => this._saveGroqKey(e.target.value)} />
                         <div class="form-hint">
-                            <span class="link" @click=${() => this.onExternalLink('https://console.groq.com/keys')}>Get Groq key</span>
+                            <span class="link" @click=${() => this.onExternalLink('https://console.groq.com/keys')}>获取 Groq 密钥</span>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Groq Model</label>
+                        <label class="form-label">Groq 模型</label>
                         <input type="text" .value=${this._groqModel} @input=${e => this._saveGroqModel(e.target.value)} />
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Groq Image Model</label>
+                        <label class="form-label">Groq 图片模型</label>
                         <input type="text" .value=${this._groqImageModel} @input=${e => this._saveGroqImageModel(e.target.value)} />
                     </div>
 
@@ -1247,13 +1247,13 @@ export class MainView extends LitElement {
                             @change=${e => this._saveDisableGroqThinking(e.target.checked)}
                         />
                         <span class="config-checkbox-text">
-                            <span class="config-summary-title">Disable thinking</span>
-                            <span class="config-summary-description">Faster responses with less internal reasoning</span>
+                            <span class="config-summary-title">关闭思考</span>
+                            <span class="config-summary-description">减少内部推理以获得更快回复</span>
                         </span>
                     </label>
 
                     <div class="config-note">
-                        If the Groq API key is empty, Gemini Live is used for answers instead. Its answer quality may be lower.
+                        如果没有填写 Groq API 密钥，将使用 Gemini Live 回复，回答质量可能有所不同。
                     </div>
                 </div>
             </details>
@@ -1263,8 +1263,8 @@ export class MainView extends LitElement {
             <!-- Cloud promo intentionally removed from the active UI. -->
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('deepseek')}>Use DeepSeek Flash</button>
-                <button class="mode-link" @click=${() => this._saveMode('local')}>Use local AI</button>
+                <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
+                <button class="mode-link" @click=${() => this._saveMode('local')}>使用本地 AI</button>
             </div>
         `;
     }
@@ -1277,40 +1277,40 @@ export class MainView extends LitElement {
                 <summary class="config-summary">
                     <span class="config-summary-text">
                         <span class="config-summary-title">DeepSeek</span>
-                        <span class="config-summary-description">Online response model with local Whisper transcription</span>
+                        <span class="config-summary-description">线上回复模型 + 本地 Whisper 转写</span>
                     </span>
                     ${this._renderConfigChevron()}
                 </summary>
                 <div class="config-content">
                     <div class="form-group">
-                        <label class="form-label">DeepSeek API Key</label>
+                        <label class="form-label">DeepSeek API 密钥</label>
                         <input
                             type="password"
-                            placeholder="Required"
+                            placeholder="必填"
                             .value=${this._deepseekKey}
                             @input=${e => this._saveDeepSeekKey(e.target.value)}
                             class=${this._keyError ? 'error' : ''}
                         />
                         <div class="form-hint">
-                            <span class="link" @click=${() => this.onExternalLink('https://platform.deepseek.com/api_keys')}>Get DeepSeek key</span>
+                            <span class="link" @click=${() => this.onExternalLink('https://platform.deepseek.com/api_keys')}>获取 DeepSeek 密钥</span>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Reply model</label>
+                        <label class="form-label">回复模型</label>
                         <input type="text" .value=${this._deepseekModel} @input=${e => this._saveDeepSeekModel(e.target.value)} />
-                        <div class="form-hint">Default: deepseek-flash. Audio stays local; text and screenshots are sent to DeepSeek.</div>
+                        <div class="form-hint">默认使用 deepseek-flash。音频留在本地转写，文字和截图发送给 DeepSeek。</div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Whisper Model</label>
+                        <label class="form-label">Whisper 模型</label>
                         <select .value=${this._whisperModel} @change=${e => this._saveWhisperModel(e.target.value)}>
-                            <option value="tiny" ?selected=${this._whisperModel === 'tiny'}>Tiny multilingual (75 MB, Chinese supported)</option>
-                            <option value="tiny.en" ?selected=${this._whisperModel === 'tiny.en'}>Tiny English (75 MB, fastest)</option>
-                            <option value="base.en" ?selected=${this._whisperModel === 'base.en'}>Base English (142 MB)</option>
-                            <option value="small.en" ?selected=${this._whisperModel === 'small.en'}>Small English (466 MB, most accurate)</option>
+                            <option value="tiny" ?selected=${this._whisperModel === 'tiny'}>Tiny 多语言（75 MB，支持中文）</option>
+                            <option value="tiny.en" ?selected=${this._whisperModel === 'tiny.en'}>Tiny 英语（75 MB，速度最快）</option>
+                            <option value="base.en" ?selected=${this._whisperModel === 'base.en'}>Base 英语（142 MB）</option>
+                            <option value="small.en" ?selected=${this._whisperModel === 'small.en'}>Small 英语（466 MB，准确度最高）</option>
                         </select>
-                        <div class="form-hint">Chinese language selection automatically switches English-only models to multilingual Tiny.</div>
+                        <div class="form-hint">选择中文后，英语专用模型会自动切换为多语言 Tiny。</div>
                     </div>
                 </div>
             </details>
@@ -1318,8 +1318,8 @@ export class MainView extends LitElement {
             ${this._renderStartButton()} ${this._renderDivider()}
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('byok')}>Use Gemini / Groq</button>
-                <button class="mode-link" @click=${() => this._saveMode('local')}>Use local AI</button>
+                <button class="mode-link" @click=${() => this._saveMode('byok')}>使用 Gemini / Groq</button>
+                <button class="mode-link" @click=${() => this._saveMode('local')}>使用本地 AI</button>
             </div>
         `;
     }
@@ -1331,20 +1331,20 @@ export class MainView extends LitElement {
             <details class="config-section">
                 <summary class="config-summary">
                     <span class="config-summary-text">
-                        <span class="config-summary-title">Language model</span>
-                        <span class="config-summary-description">Local GGUF model</span>
+                        <span class="config-summary-title">语言模型</span>
+                        <span class="config-summary-description">本地 GGUF 模型</span>
                     </span>
                     ${this._renderConfigChevron()}
                 </summary>
                 <div class="config-content">
                     <div class="form-group">
-                        <label class="form-label">Model</label>
+                        <label class="form-label">模型</label>
                         <select
                             .value=${this._useCustomLocalLlmModel ? 'custom' : this._localLlmModel}
                             @change=${event => this._selectLocalLlmModel(event.target.value)}
                         >
                             ${LOCAL_LLM_PRESETS.map(preset => html`<option value=${preset.value}>${preset.label}</option>`)}
-                            <option value="custom">Custom Hugging Face model or local GGUF…</option>
+                            <option value="custom">自定义 Hugging Face 模型或本地 GGUF……</option>
                         </select>
                         ${
                             this._useCustomLocalLlmModel
@@ -1358,7 +1358,7 @@ export class MainView extends LitElement {
                                   `
                                 : ''
                         }
-                        <div class="form-hint">Sizes include the vision model. Q4 uses less memory; Q8 preserves more quality.</div>
+                        <div class="form-hint">大小包含视觉模型。Q4 占用更少内存，Q8 保留更高质量。</div>
                     </div>
                 </div>
             </details>
@@ -1366,23 +1366,24 @@ export class MainView extends LitElement {
             <details class="config-section">
                 <summary class="config-summary">
                     <span class="config-summary-text">
-                        <span class="config-summary-title">Transcription</span>
-                        <span class="config-summary-description">Whisper speech-to-text model</span>
+                        <span class="config-summary-title">语音转写</span>
+                        <span class="config-summary-description">Whisper 语音转文字模型</span>
                     </span>
                     ${this._renderConfigChevron()}
                 </summary>
                 <div class="config-content">
                     <div class="form-group">
                         <div class="whisper-label-row">
-                            <label class="form-label">Whisper Model</label>
+                            <label class="form-label">Whisper 模型</label>
                             ${this.whisperDownloading ? html`<div class="whisper-spinner"></div>` : ''}
                         </div>
                         <select .value=${this._whisperModel} @change=${e => this._saveWhisperModel(e.target.value)}>
-                            <option value="tiny.en" ?selected=${this._whisperModel === 'tiny.en'}>Tiny English (75 MB, fastest)</option>
-                            <option value="base.en" ?selected=${this._whisperModel === 'base.en'}>Base English (142 MB)</option>
-                            <option value="small.en" ?selected=${this._whisperModel === 'small.en'}>Small English (466 MB, most accurate)</option>
+                            <option value="tiny" ?selected=${this._whisperModel === 'tiny'}>Tiny 多语言（75 MB，支持中文）</option>
+                            <option value="tiny.en" ?selected=${this._whisperModel === 'tiny.en'}>Tiny 英语（75 MB，速度最快）</option>
+                            <option value="base.en" ?selected=${this._whisperModel === 'base.en'}>Base 英语（142 MB）</option>
+                            <option value="small.en" ?selected=${this._whisperModel === 'small.en'}>Small 英语（466 MB，准确度最高）</option>
                         </select>
-                        <div class="form-hint">${this.whisperDownloading ? 'Downloading model...' : 'Downloaded automatically on first use'}</div>
+                        <div class="form-hint">${this.whisperDownloading ? '正在下载模型……' : '首次使用时自动下载'}</div>
                     </div>
                 </div>
             </details>
@@ -1392,8 +1393,8 @@ export class MainView extends LitElement {
             <!-- Cloud promo intentionally removed from the active UI. -->
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('deepseek')}>Use DeepSeek Flash</button>
-                <button class="mode-link" @click=${() => this._saveMode('byok')}>Use own API keys</button>
+                <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
+                <button class="mode-link" @click=${() => this._saveMode('byok')}>使用 Gemini / Groq</button>
             </div>
         `;
     }
@@ -1417,14 +1418,14 @@ export class MainView extends LitElement {
                     this._mode === 'local' || this._mode === 'deepseek'
                         ? html`
                               <div class="title-row">
-                                  <div class="page-title">Cheating Daddy <span class="mode-suffix">${this._mode === 'deepseek' ? 'DeepSeek' : 'Local AI'}</span></div>
-                                  ${this._mode === 'local' ? html`<button class="help-btn" @click=${this._openLocalHelp} aria-label="Open Local AI help">${helpIcon}</button>` : ''}
+                                  <div class="page-title">Cheating Daddy <span class="mode-suffix">${this._mode === 'deepseek' ? 'DeepSeek' : '本地 AI'}</span></div>
+                                  ${this._mode === 'local' ? html`<button class="help-btn" @click=${this._openLocalHelp} aria-label="打开本地 AI 帮助">${helpIcon}</button>` : ''}
                               </div>
                           `
                         : html` <div class="page-title">${html`Cheating Daddy <span class="mode-suffix">BYOK</span>`}</div> `
                 }
                 <div class="page-subtitle">
-                    ${this._mode === 'byok' ? 'Bring your own API keys' : this._mode === 'deepseek' ? 'DeepSeek replies with local speech transcription' : 'Run models locally on your machine'}
+                    ${this._mode === 'byok' ? '使用你自己的 API 密钥' : this._mode === 'deepseek' ? 'DeepSeek 负责回复，本地负责语音转写' : '在本机运行模型'}
                 </div>
 
                 <!-- Cloud mode render branch intentionally disabled. -->
@@ -1440,32 +1441,30 @@ export class MainView extends LitElement {
             <div class="help-dialog-backdrop" @click=${this._closeLocalHelp}>
                 <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="local-help-title" @click=${this._handleHelpDialogClick}>
                     <div class="help-dialog-header">
-                        <div id="local-help-title" class="help-dialog-title">Local AI setup</div>
-                        <button class="help-btn" @click=${this._closeLocalHelp} aria-label="Close Local AI help">${closeIcon}</button>
+                        <div id="local-help-title" class="help-dialog-title">本地 AI 设置</div>
+                        <button class="help-btn" @click=${this._closeLocalHelp} aria-label="关闭本地 AI 帮助">${closeIcon}</button>
                     </div>
 
                     <div class="help-content">
                         <div class="help-section">
-                            <div class="help-section-title">Native local AI</div>
+                            <div class="help-section-title">原生本地 AI</div>
                             <div class="help-section-text">
-                                Cheating Daddy runs llama.cpp and whisper.cpp directly. Everything stays on your computer — no external AI service or
-                                Ollama installation is required.
+                                Cheating Daddy 直接运行 llama.cpp 和 whisper.cpp。所有数据都留在本机，不需要外部 AI 服务或安装 Ollama。
                             </div>
                         </div>
 
                         <div class="help-section">
-                            <div class="help-section-title">Automatic setup</div>
+                            <div class="help-section-title">自动配置</div>
                             <div class="help-section-text">
-                                The correct native runners, selected Whisper model, and language model are downloaded and checksum-verified on first
-                                use. They are stored in the Cheating Daddy config directory.
+                                首次使用时会自动下载并校验原生运行器、选定的 Whisper 模型和语言模型，并存放在 Cheating Daddy 数据目录中。
                             </div>
                         </div>
 
                         <div class="help-section">
-                            <div class="help-section-title">Default model</div>
+                            <div class="help-section-title">默认模型</div>
                             <div class="help-models">
                                 <div class="help-model">
-                                    <span class="help-model-name">Qwen3.5 4B Q4_K_M</span><span>About 2.7 GB — balanced local quality and speed</span>
+                                    <span class="help-model-name">Qwen3.5 4B Q4_K_M</span><span>约 2.7 GB — 质量和速度均衡</span>
                                 </div>
                             </div>
                         </div>
@@ -1473,17 +1472,16 @@ export class MainView extends LitElement {
                         <div class="help-section">
                             <div class="help-section-title">Whisper</div>
                             <div class="help-section-text">
-                                The selected whisper.cpp model is downloaded automatically once and kept in the config directory.
+                                选定的 whisper.cpp 模型只需自动下载一次，之后会保存在数据目录中。
                             </div>
                         </div>
 
                         <hr class="help-divider" />
 
                         <div class="help-section">
-                            <div class="help-section-title">Computer hanging or slow?</div>
+                            <div class="help-section-title">电脑卡顿或变慢？</div>
                             <div class="help-section-text">
-                                Running models locally uses a lot of RAM and CPU. If your computer slows down or freezes, it's likely the LLM. Switch
-                                back to BYOK mode if you want to use a hosted provider instead.
+                                本地运行模型会占用较多内存和 CPU。如果电脑变慢或卡顿，通常是语言模型负载较高。需要使用线上模型时，可以切换回 API 模式。
                             </div>
                         </div>
 
@@ -1494,7 +1492,7 @@ export class MainView extends LitElement {
                                 this._saveMode('byok');
                             }}
                         >
-                            Switch to BYOK
+                            切换到 API 模式
                         </button>
                     </div>
                 </section>

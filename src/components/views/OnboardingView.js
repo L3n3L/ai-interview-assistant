@@ -313,9 +313,9 @@ export class OnboardingView extends LitElement {
             return html`
                 <div class="slide">
                     <div class="slide-title">Cheating Daddy</div>
-                    <div class="slide-text">Real-time AI that listens, watches, and helps during interviews, meetings, and exams.</div>
+                    <div class="slide-text">实时 AI 助手，可在面试、会议和考试期间聆听、观察并提供帮助。</div>
                     <div class="actions">
-                        <button class="btn-primary" @click=${() => { this.currentSlide = 1; }}>Continue</button>
+                        <button class="btn-primary" @click=${() => { this.currentSlide = 1; }}>继续</button>
                     </div>
                 </div>
             `;
@@ -323,17 +323,17 @@ export class OnboardingView extends LitElement {
 
         return html`
             <div class="slide">
-                <div class="slide-title">Add context</div>
-                <div class="slide-text">Paste your resume or any info the AI should know. You can skip this and add it later.</div>
+                <div class="slide-title">添加背景信息</div>
+                <div class="slide-text">粘贴简历或其他需要 AI 了解的信息。也可以跳过，稍后再添加。</div>
                 <textarea
                     class="context-input"
-                    placeholder="Resume, job description, notes..."
+                    placeholder="简历、职位描述、备注……"
                     .value=${this.contextText}
                     @input=${this.handleContextInput}
                 ></textarea>
                 <div class="actions">
-                    <button class="btn-primary" @click=${this.completeOnboarding}>Get Started</button>
-                    <button class="btn-back" @click=${() => { this.currentSlide = 0; }}>Back</button>
+                    <button class="btn-primary" @click=${this.completeOnboarding}>开始使用</button>
+                    <button class="btn-back" @click=${() => { this.currentSlide = 0; }}>返回</button>
                 </div>
             </div>
         `;

@@ -142,35 +142,35 @@ export class HelpView extends LitElement {
 
     render() {
         const shortcutRows = [
-            ['Move Window Up', this.keybinds.moveUp],
-            ['Move Window Down', this.keybinds.moveDown],
-            ['Move Window Left', this.keybinds.moveLeft],
-            ['Move Window Right', this.keybinds.moveRight],
-            ['Toggle Visibility', this.keybinds.toggleVisibility],
-            ['Toggle Click-through', this.keybinds.toggleClickThrough],
-            ['Ask Next Step', this.keybinds.nextStep],
-            ['Previous Response', this.keybinds.previousResponse],
-            ['Next Response', this.keybinds.nextResponse],
-            ['Scroll Response Up', this.keybinds.scrollUp],
-            ['Scroll Response Down', this.keybinds.scrollDown],
+            ['窗口上移', this.keybinds.moveUp],
+            ['窗口下移', this.keybinds.moveDown],
+            ['窗口左移', this.keybinds.moveLeft],
+            ['窗口右移', this.keybinds.moveRight],
+            ['切换显示/隐藏', this.keybinds.toggleVisibility],
+            ['切换鼠标穿透', this.keybinds.toggleClickThrough],
+            ['询问下一步', this.keybinds.nextStep],
+            ['上一条回复', this.keybinds.previousResponse],
+            ['下一条回复', this.keybinds.nextResponse],
+            ['向上滚动回复', this.keybinds.scrollUp],
+            ['向下滚动回复', this.keybinds.scrollDown],
         ];
 
         return html`
             <div class="unified-page">
                 <div class="unified-wrap">
-                    <div class="page-title">Help</div>
+                    <div class="page-title">帮助</div>
 
                     <section class="surface">
-                        <div class="surface-title">Support</div>
+                        <div class="surface-title">支持</div>
                         <div class="link-row">
-                            <button class="link-button" @click=${() => this._open('https://cheatingdaddy.com')}>Website</button>
+                            <button class="link-button" @click=${() => this._open('https://cheatingdaddy.com')}>官方网站</button>
                             <button class="link-button" @click=${() => this._open('https://github.com/sohzm/cheating-daddy')}>GitHub</button>
-                            <button class="link-button" @click=${() => this._open('https://discord.gg/GCBdubnXfJ')}>Discord</button>
+                            <button class="link-button" @click=${() => this._open('https://discord.gg/GCBdubnXfJ')}>Discord 社区</button>
                         </div>
                     </section>
 
                     <section class="surface">
-                        <div class="surface-title">Keyboard Shortcuts</div>
+                        <div class="surface-title">键盘快捷键</div>
                         <div class="shortcut-grid">
                             ${shortcutRows.map(([label, keys]) => html`
                                 <div class="shortcut-row">

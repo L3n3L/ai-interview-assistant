@@ -245,47 +245,47 @@ export class CustomizeView extends LitElement {
 
     getProfiles() {
         return [
-            { value: 'interview', name: 'Job Interview' },
-            { value: 'sales', name: 'Sales Call' },
-            { value: 'meeting', name: 'Business Meeting' },
-            { value: 'presentation', name: 'Presentation' },
-            { value: 'negotiation', name: 'Negotiation' },
-            { value: 'exam', name: 'Exam Assistant' },
+            { value: 'interview', name: '求职面试' },
+            { value: 'sales', name: '销售通话' },
+            { value: 'meeting', name: '商务会议' },
+            { value: 'presentation', name: '演示汇报' },
+            { value: 'negotiation', name: '商务谈判' },
+            { value: 'exam', name: '考试助手' },
         ];
     }
 
     getLanguages() {
         return [
-            { value: 'en-US', name: 'English (US)' },
-            { value: 'en-GB', name: 'English (UK)' },
-            { value: 'en-AU', name: 'English (Australia)' },
-            { value: 'en-IN', name: 'English (India)' },
-            { value: 'de-DE', name: 'German (Germany)' },
-            { value: 'es-US', name: 'Spanish (US)' },
-            { value: 'es-ES', name: 'Spanish (Spain)' },
-            { value: 'fr-FR', name: 'French (France)' },
-            { value: 'fr-CA', name: 'French (Canada)' },
-            { value: 'hi-IN', name: 'Hindi (India)' },
-            { value: 'pt-BR', name: 'Portuguese (Brazil)' },
-            { value: 'ar-XA', name: 'Arabic (Generic)' },
-            { value: 'id-ID', name: 'Indonesian (Indonesia)' },
-            { value: 'it-IT', name: 'Italian (Italy)' },
-            { value: 'ja-JP', name: 'Japanese (Japan)' },
-            { value: 'tr-TR', name: 'Turkish (Turkey)' },
-            { value: 'vi-VN', name: 'Vietnamese (Vietnam)' },
-            { value: 'bn-IN', name: 'Bengali (India)' },
-            { value: 'gu-IN', name: 'Gujarati (India)' },
-            { value: 'kn-IN', name: 'Kannada (India)' },
-            { value: 'ml-IN', name: 'Malayalam (India)' },
-            { value: 'mr-IN', name: 'Marathi (India)' },
-            { value: 'ta-IN', name: 'Tamil (India)' },
-            { value: 'te-IN', name: 'Telugu (India)' },
-            { value: 'nl-NL', name: 'Dutch (Netherlands)' },
-            { value: 'ko-KR', name: 'Korean (South Korea)' },
-            { value: 'cmn-CN', name: 'Mandarin Chinese (China)' },
-            { value: 'pl-PL', name: 'Polish (Poland)' },
-            { value: 'ru-RU', name: 'Russian (Russia)' },
-            { value: 'th-TH', name: 'Thai (Thailand)' },
+            { value: 'en-US', name: '英语（美国）' },
+            { value: 'en-GB', name: '英语（英国）' },
+            { value: 'en-AU', name: '英语（澳大利亚）' },
+            { value: 'en-IN', name: '英语（印度）' },
+            { value: 'de-DE', name: '德语（德国）' },
+            { value: 'es-US', name: '西班牙语（美国）' },
+            { value: 'es-ES', name: '西班牙语（西班牙）' },
+            { value: 'fr-FR', name: '法语（法国）' },
+            { value: 'fr-CA', name: '法语（加拿大）' },
+            { value: 'hi-IN', name: '印地语（印度）' },
+            { value: 'pt-BR', name: '葡萄牙语（巴西）' },
+            { value: 'ar-XA', name: '阿拉伯语（通用）' },
+            { value: 'id-ID', name: '印度尼西亚语（印度尼西亚）' },
+            { value: 'it-IT', name: '意大利语（意大利）' },
+            { value: 'ja-JP', name: '日语（日本）' },
+            { value: 'tr-TR', name: '土耳其语（土耳其）' },
+            { value: 'vi-VN', name: '越南语（越南）' },
+            { value: 'bn-IN', name: '孟加拉语（印度）' },
+            { value: 'gu-IN', name: '古吉拉特语（印度）' },
+            { value: 'kn-IN', name: '卡纳达语（印度）' },
+            { value: 'ml-IN', name: '马拉雅拉姆语（印度）' },
+            { value: 'mr-IN', name: '马拉地语（印度）' },
+            { value: 'ta-IN', name: '泰米尔语（印度）' },
+            { value: 'te-IN', name: '泰卢固语（印度）' },
+            { value: 'nl-NL', name: '荷兰语（荷兰）' },
+            { value: 'ko-KR', name: '韩语（韩国）' },
+            { value: 'cmn-CN', name: '中文普通话（中国）' },
+            { value: 'pl-PL', name: '波兰语（波兰）' },
+            { value: 'ru-RU', name: '俄语（俄罗斯）' },
+            { value: 'th-TH', name: '泰语（泰国）' },
         ];
     }
 
@@ -308,17 +308,17 @@ export class CustomizeView extends LitElement {
 
     getKeybindActions() {
         return [
-            { key: 'moveUp', name: 'Move Window Up', description: 'Move the app window up' },
-            { key: 'moveDown', name: 'Move Window Down', description: 'Move the app window down' },
-            { key: 'moveLeft', name: 'Move Window Left', description: 'Move the app window left' },
-            { key: 'moveRight', name: 'Move Window Right', description: 'Move the app window right' },
-            { key: 'toggleVisibility', name: 'Toggle Visibility', description: 'Show or hide the app window' },
-            { key: 'toggleClickThrough', name: 'Toggle Click-through', description: 'Enable or disable click-through mode' },
-            { key: 'nextStep', name: 'Ask Next Step', description: 'Take screenshot and ask for next step' },
-            { key: 'previousResponse', name: 'Previous Response', description: 'Move to previous AI response' },
-            { key: 'nextResponse', name: 'Next Response', description: 'Move to next AI response' },
-            { key: 'scrollUp', name: 'Scroll Response Up', description: 'Scroll response content upward' },
-            { key: 'scrollDown', name: 'Scroll Response Down', description: 'Scroll response content downward' },
+            { key: 'moveUp', name: '窗口上移', description: '向上移动应用窗口' },
+            { key: 'moveDown', name: '窗口下移', description: '向下移动应用窗口' },
+            { key: 'moveLeft', name: '窗口左移', description: '向左移动应用窗口' },
+            { key: 'moveRight', name: '窗口右移', description: '向右移动应用窗口' },
+            { key: 'toggleVisibility', name: '切换显示/隐藏', description: '显示或隐藏应用窗口' },
+            { key: 'toggleClickThrough', name: '切换鼠标穿透', description: '启用或关闭鼠标穿透模式' },
+            { key: 'nextStep', name: '询问下一步', description: '截取屏幕并询问下一步操作' },
+            { key: 'previousResponse', name: '上一条回复', description: '切换到上一条 AI 回复' },
+            { key: 'nextResponse', name: '下一条回复', description: '切换到下一条 AI 回复' },
+            { key: 'scrollUp', name: '向上滚动回复', description: '向上滚动回复内容' },
+            { key: 'scrollDown', name: '向下滚动回复', description: '向下滚动回复内容' },
         ];
     }
 
@@ -524,11 +524,11 @@ export class CustomizeView extends LitElement {
             this.updateFontSize();
             await cheatingDaddy.theme.save(defaults.theme);
 
-            this.clearStatusMessage = 'All settings restored to defaults';
+            this.clearStatusMessage = '已恢复全部默认设置';
             this.clearStatusType = 'success';
         } catch (error) {
             console.error('Error restoring settings:', error);
-            this.clearStatusMessage = `Error restoring settings: ${error.message}`;
+            this.clearStatusMessage = `恢复设置失败：${error.message}`;
             this.clearStatusType = 'error';
         } finally {
             this.isRestoring = false;
@@ -544,11 +544,11 @@ export class CustomizeView extends LitElement {
         this.requestUpdate();
         try {
             await cheatingDaddy.storage.clearAll();
-            this.clearStatusMessage = 'Successfully cleared all local data';
+            this.clearStatusMessage = '已成功清除全部本地数据';
             this.clearStatusType = 'success';
             this.requestUpdate();
             setTimeout(() => {
-                this.clearStatusMessage = 'Closing application...';
+                this.clearStatusMessage = '正在关闭应用……';
                 this.requestUpdate();
                 setTimeout(async () => {
                     if (window.require) {
@@ -559,7 +559,7 @@ export class CustomizeView extends LitElement {
             }, 2000);
         } catch (error) {
             console.error('Error clearing data:', error);
-            this.clearStatusMessage = `Error clearing data: ${error.message}`;
+            this.clearStatusMessage = `清除数据失败：${error.message}`;
             this.clearStatusType = 'error';
         } finally {
             this.isClearing = false;
@@ -570,25 +570,25 @@ export class CustomizeView extends LitElement {
     renderAudioSection() {
         return html`
             <section class="surface">
-                <div class="surface-title">Audio Input</div>
+                <div class="surface-title">音频输入</div>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Audio Mode</label>
+                        <label class="form-label">音频模式</label>
                         <select class="control" .value=${this.audioMode} @change=${this.handleAudioModeSelect}>
-                            <option value="speaker_only">Speaker Only (Interviewer)</option>
-                            <option value="mic_only">Microphone Only (Me)</option>
-                            <option value="both">Both Speaker and Microphone</option>
+                            <option value="speaker_only">仅扬声器（面试官）</option>
+                            <option value="mic_only">仅麦克风（我）</option>
+                            <option value="both">扬声器和麦克风</option>
                         </select>
                     </div>
                     ${this.audioMode !== 'speaker_only' ? html`
-                        <div class="warning-callout">May cause unexpected behavior. Only change this if you know what you're doing.</div>
+                        <div class="warning-callout">可能导致异常行为。请确认了解其作用后再修改。</div>
                     ` : ''}
                     <div class="form-group">
-                        <label class="form-label">Image Quality</label>
+                        <label class="form-label">图片质量</label>
                         <select class="control" .value=${this.selectedImageQuality} @change=${this.handleImageQualitySelect}>
-                            <option value="high">High Quality</option>
-                            <option value="medium">Medium Quality</option>
-                            <option value="low">Low Quality</option>
+                            <option value="high">高</option>
+                            <option value="medium">中</option>
+                            <option value="low">低</option>
                         </select>
                     </div>
                 </div>
@@ -599,10 +599,10 @@ export class CustomizeView extends LitElement {
     renderLanguageSection() {
         return html`
             <section class="surface">
-                <div class="surface-title">Language</div>
+                <div class="surface-title">语言</div>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Speech Language</label>
+                        <label class="form-label">语音语言</label>
                         <select class="control" .value=${this.selectedLanguage} @change=${this.handleLanguageSelect}>
                             ${this.getLanguages().map(language => html`<option value=${language.value}>${language.name}</option>`)}
                         </select>
@@ -615,17 +615,17 @@ export class CustomizeView extends LitElement {
     renderAppearanceSection() {
         return html`
             <section class="surface">
-                <div class="surface-title">Appearance</div>
+                <div class="surface-title">外观</div>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Theme</label>
+                        <label class="form-label">主题</label>
                         <select class="control" .value=${this.theme} @change=${this.handleThemeChange}>
                             ${this.getThemes().map(theme => html`<option value=${theme.value}>${theme.name}</option>`)}
                         </select>
                     </div>
                     <div class="form-group slider-wrap">
                         <div class="slider-header">
-                            <label class="form-label">Background Transparency</label>
+                            <label class="form-label">背景透明度</label>
                             <span class="slider-value">${Math.round(this.backgroundTransparency * 100)}%</span>
                         </div>
                         <input
@@ -640,7 +640,7 @@ export class CustomizeView extends LitElement {
                     </div>
                     <div class="form-group slider-wrap">
                         <div class="slider-header">
-                            <label class="form-label">Response Font Size</label>
+                            <label class="form-label">回复字体大小</label>
                             <span class="slider-value">${this.fontSize}px</span>
                         </div>
                         <input
@@ -661,7 +661,7 @@ export class CustomizeView extends LitElement {
     renderKeyboardSection() {
         return html`
             <section class="surface">
-                <div class="surface-title">Keyboard Shortcuts</div>
+                <div class="surface-title">键盘快捷键</div>
                 ${this.getKeybindActions().map(action => html`
                     <div class="keybind-row">
                         <span class="keybind-name">${action.name}</span>
@@ -677,7 +677,7 @@ export class CustomizeView extends LitElement {
                     </div>
                 `)}
                 <div style="margin-top: var(--space-sm);">
-                    <button class="control" style="width:auto;padding:8px 10px;" @click=${this.resetKeybinds}>Reset to defaults</button>
+                    <button class="control" style="width:auto;padding:8px 10px;" @click=${this.resetKeybinds}>恢复默认</button>
                 </div>
             </section>
         `;
@@ -686,13 +686,13 @@ export class CustomizeView extends LitElement {
     renderPrivacySection() {
         return html`
             <section class="surface danger-surface">
-                <div class="surface-title danger">Privacy and Data</div>
+                <div class="surface-title danger">隐私与数据</div>
                 <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
                     <button class="danger-button" @click=${this.restoreAllSettings} ?disabled=${this.isRestoring}>
-                        ${this.isRestoring ? 'Restoring...' : 'Restore all settings'}
+                        ${this.isRestoring ? '正在恢复……' : '恢复全部设置'}
                     </button>
                     <button class="danger-button" @click=${this.clearLocalData} ?disabled=${this.isClearing}>
-                        ${this.isClearing ? 'Clearing...' : 'Delete all data'}
+                        ${this.isClearing ? '正在清除……' : '删除全部数据'}
                     </button>
                 </div>
                 ${this.clearStatusMessage ? html`
@@ -706,7 +706,7 @@ export class CustomizeView extends LitElement {
         return html`
             <div class="unified-page">
                 <div class="unified-wrap">
-                    <div class="page-title">Settings</div>
+                    <div class="page-title">设置</div>
                     ${this.renderAudioSection()}
                     ${this.renderLanguageSection()}
                     ${this.renderAppearanceSection()}

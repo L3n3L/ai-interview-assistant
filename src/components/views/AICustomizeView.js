@@ -70,50 +70,50 @@ export class AICustomizeView extends LitElement {
 
     _getProfileName(profile) {
         const names = {
-            interview: 'Job Interview',
-            sales: 'Sales Call',
-            meeting: 'Business Meeting',
-            presentation: 'Presentation',
-            negotiation: 'Negotiation',
-            exam: 'Exam Assistant',
+            interview: '求职面试',
+            sales: '销售通话',
+            meeting: '商务会议',
+            presentation: '演示汇报',
+            negotiation: '商务谈判',
+            exam: '考试助手',
         };
         return names[profile] || profile;
     }
 
     render() {
         const profiles = [
-            { value: 'interview', label: 'Job Interview' },
-            { value: 'sales', label: 'Sales Call' },
-            { value: 'meeting', label: 'Business Meeting' },
-            { value: 'presentation', label: 'Presentation' },
-            { value: 'negotiation', label: 'Negotiation' },
-            { value: 'exam', label: 'Exam Assistant' },
+            { value: 'interview', label: '求职面试' },
+            { value: 'sales', label: '销售通话' },
+            { value: 'meeting', label: '商务会议' },
+            { value: 'presentation', label: '演示汇报' },
+            { value: 'negotiation', label: '商务谈判' },
+            { value: 'exam', label: '考试助手' },
         ];
 
         return html`
             <div class="unified-page">
                 <div class="unified-wrap">
                     <div>
-                        <div class="page-title">AI Context</div>
+                        <div class="page-title">AI 背景信息</div>
                     </div>
 
                     <section class="surface">
                         <div class="form-grid">
                             <div class="form-group">
-                                <label class="form-label">Profile</label>
+                                <label class="form-label">场景</label>
                                 <select class="control" .value=${this.selectedProfile} @change=${this._handleProfileChange}>
                                     ${profiles.map(profile => html`<option value=${profile.value}>${profile.label}</option>`)}
                                 </select>
                             </div>
                             <div class="form-group vertical">
-                                <label class="form-label">Custom Instructions</label>
+                                <label class="form-label">自定义指令</label>
                                 <textarea
                                     class="control"
-                                    placeholder="Resume details, role requirements, constraints..."
+                                    placeholder="简历信息、岗位要求、限制条件……"
                                     .value=${this._context}
                                     @input=${e => this._saveContext(e.target.value)}
                                 ></textarea>
-                                <div class="form-help">Sent as context at session start. Keep it short.</div>
+                                <div class="form-help">会在会话开始时作为背景信息发送。建议保持简短。</div>
                             </div>
                         </div>
                     </section>

@@ -8,6 +8,32 @@ import { OnboardingView } from '../views/OnboardingView.js';
 import { AICustomizeView } from '../views/AICustomizeView.js';
 import { FeedbackView } from '../views/FeedbackView.js';
 
+function translateStatus(text) {
+    const exactTranslations = {
+        Live: '实时连接',
+        'Local AI Live': '本地 AI 已连接',
+        'DeepSeek Live': 'DeepSeek 已连接',
+        'Live session connected': '实时会话已连接',
+        'Session closed': '会话已关闭',
+        'Listening...': '正在聆听…',
+        'Transcribing...': '正在转写…',
+        'Generating response...': '正在生成回答…',
+        'Analyzing image...': '正在分析图片…',
+        'Whisper ready - Listening...': 'Whisper 已就绪 - 正在聆听…',
+        'Local AI ready - Listening...': '本地 AI 已就绪 - 正在聆听…',
+    };
+
+    if (exactTranslations[text]) return exactTranslations[text];
+    if (text.startsWith('Listening...')) return text.replace('Listening...', '正在聆听…');
+    if (text.startsWith('Reconnecting...')) return text.replace('Reconnecting...', '正在重连…');
+    if (text.startsWith('DeepSeek error:')) return text.replace('DeepSeek error:', 'DeepSeek 错误：');
+    if (text.startsWith('Local AI error:')) return text.replace('Local AI error:', '本地 AI 错误：');
+    if (text.startsWith('Whisper error:')) return text.replace('Whisper error:', 'Whisper 错误：');
+    if (text.startsWith('Transcription error:')) return text.replace('Transcription error:', '转写错误：');
+    if (text.startsWith('Error:')) return text.replace('Error:', '错误：');
+    return text;
+}
+
 export class CheatingDaddyApp extends LitElement {
     static styles = css`
         * {
@@ -529,7 +555,7 @@ export class CheatingDaddyApp extends LitElement {
     // ── Status & Responses ──
 
     setStatus(text) {
-        this.statusText = text;
+        this.statusText = translateStatus(text);
         if (text.includes('Ready') || text.includes('Listening') || text.includes('Error')) {
             this._currentResponseIsComplete = true;
         }
@@ -835,7 +861,7 @@ export class CheatingDaddyApp extends LitElement {
         const items = [
             {
                 id: 'main',
-                label: 'Home',
+                label: '主页',
                 icon: html`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
                     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
                         <path
@@ -847,7 +873,7 @@ export class CheatingDaddyApp extends LitElement {
             },
             {
                 id: 'ai-customize',
-                label: 'AI Customization',
+                label: 'AI 定制',
                 icon: html`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
                     <path
                         fill="none"
@@ -861,7 +887,7 @@ export class CheatingDaddyApp extends LitElement {
             },
             {
                 id: 'history',
-                label: 'History',
+                label: '历史记录',
                 icon: html`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
                     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
                         <path
@@ -873,7 +899,7 @@ export class CheatingDaddyApp extends LitElement {
             },
             {
                 id: 'customize',
-                label: 'Settings',
+                label: '设置',
                 icon: html`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
                     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
                         <path
@@ -885,7 +911,7 @@ export class CheatingDaddyApp extends LitElement {
             },
             {
                 id: 'feedback',
-                label: 'Feedback',
+                label: '反馈',
                 icon: html`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
                     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
                         <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5l-5 3v-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zM9.5 9h.01m4.99 0h.01" />
@@ -895,7 +921,7 @@ export class CheatingDaddyApp extends LitElement {
             },
             {
                 id: 'help',
-                label: 'Help',
+                label: '帮助',
                 icon: html`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
                     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
                         <path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9s-9-1.8-9-9s1.8-9 9-9m0 13v.01" />
@@ -938,7 +964,7 @@ export class CheatingDaddyApp extends LitElement {
                                               d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 11l5 5l5-5m-5-7v12"
                                           />
                                       </svg>
-                                      Update available
+                                      有新版本可用
                                   </button>
                               `
                             : html` <div class="version-text">v${this._localVersion}</div> `
@@ -952,18 +978,18 @@ export class CheatingDaddyApp extends LitElement {
         if (!this._isLiveMode()) return '';
 
         const profileLabels = {
-            interview: 'Interview',
-            sales: 'Sales Call',
-            meeting: 'Meeting',
-            presentation: 'Presentation',
-            negotiation: 'Negotiation',
-            exam: 'Exam',
+            interview: '面试',
+            sales: '销售通话',
+            meeting: '商务会议',
+            presentation: '演示汇报',
+            negotiation: '商务谈判',
+            exam: '考试',
         };
 
         return html`
             <div class="live-bar">
                 <div class="live-bar-left">
-                    <button class="live-bar-back" @click=${() => this.handleClose()} title="End session">
+                    <button class="live-bar-back" @click=${() => this.handleClose()} title="结束会话">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                             <path
                                 fill-rule="evenodd"
@@ -973,12 +999,12 @@ export class CheatingDaddyApp extends LitElement {
                         </svg>
                     </button>
                 </div>
-                <div class="live-bar-center">${profileLabels[this.selectedProfile] || 'Session'}</div>
+                <div class="live-bar-center">${profileLabels[this.selectedProfile] || '会话'}</div>
                 <div class="live-bar-right">
                     ${this.statusText ? html`<span class="live-bar-text">${this.statusText}</span>` : ''}
                     <span class="live-bar-text">${this.getElapsedTime()}</span>
-                    ${this._isClickThrough ? html`<span class="live-bar-text">[click through]</span>` : ''}
-                    <span class="live-bar-text clickable" @click=${() => this.handleHideToggle()}>[hide]</span>
+                    ${this._isClickThrough ? html`<span class="live-bar-text">[穿透]</span>` : ''}
+                    <span class="live-bar-text clickable" @click=${() => this.handleHideToggle()}>[隐藏]</span>
                 </div>
             </div>
         `;
@@ -996,9 +1022,9 @@ export class CheatingDaddyApp extends LitElement {
             <div class="app-shell">
                 <div class="top-drag-bar ${isLive ? 'hidden' : ''}">
                     <div class="traffic-lights">
-                        <button class="traffic-light close" @click=${() => this.handleClose()} title="Close"></button>
-                        <button class="traffic-light minimize" @click=${() => this._handleMinimize()} title="Minimize"></button>
-                        <button class="traffic-light maximize" title="Maximize"></button>
+                        <button class="traffic-light close" @click=${() => this.handleClose()} title="关闭"></button>
+                        <button class="traffic-light minimize" @click=${() => this._handleMinimize()} title="最小化"></button>
+                        <button class="traffic-light maximize" title="最大化"></button>
                     </div>
                     <div class="drag-region"></div>
                 </div>

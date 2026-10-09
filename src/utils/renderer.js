@@ -968,15 +968,15 @@ const theme = {
 
     getAll() {
         const names = {
-            dark: 'Dark',
-            light: 'Light',
-            midnight: 'Midnight Blue',
-            sepia: 'Sepia',
-            catppuccin: 'Catppuccin Mocha',
-            gruvbox: 'Gruvbox Dark',
-            rosepine: 'Ros\u00e9 Pine',
-            solarized: 'Solarized Dark',
-            tokyonight: 'Tokyo Night',
+            dark: '深色',
+            light: '浅色',
+            midnight: '午夜蓝',
+            sepia: '棕褐色',
+            catppuccin: 'Catppuccin 摩卡',
+            gruvbox: 'Gruvbox 深色',
+            rosepine: 'Rosé Pine',
+            solarized: 'Solarized 深色',
+            tokyonight: '东京之夜',
         };
         return Object.keys(this.themes).map(key => ({
             value: key,

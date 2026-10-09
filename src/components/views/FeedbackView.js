@@ -29,14 +29,14 @@ export class FeedbackView extends LitElement {
         return html`
             <div class="unified-page">
                 <div class="unified-wrap">
-                    <div class="page-title">Feedback</div>
+                    <div class="page-title">反馈</div>
 
                     <section class="surface">
                         <div class="feedback-embed">
                             <iframe
                                 class="feedback-iframe"
                                 src=${FEEDBACK_FORM_URL}
-                                title="Feedback Form"
+                                title="反馈表单"
                             ></iframe>
                         </div>
                     </section>

@@ -317,27 +317,27 @@ export class HistoryView extends LitElement {
 
     formatDate(timestamp) {
         const date = new Date(timestamp);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
     formatTime(timestamp) {
         const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     }
 
     formatTimestamp(timestamp) {
         const date = new Date(timestamp);
-        return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     getProfileNames() {
         return {
-            interview: 'Job Interview',
-            sales: 'Sales Call',
-            meeting: 'Business Meeting',
-            presentation: 'Presentation',
-            negotiation: 'Negotiation',
-            exam: 'Exam Assistant',
+            interview: '求职面试',
+            sales: '销售通话',
+            meeting: '商务会议',
+            presentation: '演示汇报',
+            negotiation: '商务谈判',
+            exam: '考试助手',
         };
     }
 
@@ -346,18 +346,18 @@ export class HistoryView extends LitElement {
             const names = this.getProfileNames();
             return names[session.profile] || session.profile;
         }
-        return 'Session';
+        return '会话';
     }
 
     getSessionPreview(session) {
         const parts = [];
-        if (session.messageCount > 0) parts.push(`${session.messageCount} messages`);
-        if (session.screenAnalysisCount > 0) parts.push(`${session.screenAnalysisCount} screen`);
+        if (session.messageCount > 0) parts.push(`${session.messageCount} 条消息`);
+        if (session.screenAnalysisCount > 0) parts.push(`${session.screenAnalysisCount} 次屏幕分析`);
         if (session.profile) {
             const profileNames = this.getProfileNames();
             parts.push(profileNames[session.profile] || session.profile);
         }
-        return parts.length > 0 ? parts.join(' · ') : 'Empty session';
+        return parts.length > 0 ? parts.join(' · ') : '空会话';
     }
 
     getFilteredSessions() {
@@ -381,11 +381,11 @@ export class HistoryView extends LitElement {
     }
 
     renderTabContent() {
-        if (!this.selectedSession) return html`<div class="empty">Select a session.</div>`;
+        if (!this.selectedSession) return html`<div class="empty">请选择一个会话。</div>`;
 
         if (this.activeTab === 'conversation') {
             const messages = this.collectConversation(this.selectedSession);
-            if (!messages.length) return html`<div class="empty">No conversation data.</div>`;
+            if (!messages.length) return html`<div class="empty">没有对话数据。</div>`;
             return messages.map(msg => html`
                 <div class="message-row ${msg.type}">
                     <div class="message">
@@ -398,7 +398,7 @@ export class HistoryView extends LitElement {
 
         if (this.activeTab === 'screen') {
             const screen = this.selectedSession.screenAnalysisHistory || [];
-            if (!screen.length) return html`<div class="empty">No screen analysis data.</div>`;
+            if (!screen.length) return html`<div class="empty">没有屏幕分析数据。</div>`;
             return screen.map(entry => html`
                 <div class="message-row screen">
                     <div class="message">
@@ -411,18 +411,18 @@ export class HistoryView extends LitElement {
 
         const profile = this.selectedSession.profile;
         const prompt = this.selectedSession.customPrompt;
-        if (!profile && !prompt) return html`<div class="empty">No context saved for this session.</div>`;
+        if (!profile && !prompt) return html`<div class="empty">此会话没有保存背景信息。</div>`;
 
         return html`
             ${profile ? html`
                 <div class="context-row">
-                    <span class="context-key">Profile</span>
+                <span class="context-key">场景</span>
                     <span class="context-value">${this.getProfileNames()[profile] || profile}</span>
                 </div>
             ` : ''}
             ${prompt ? html`
                 <div class="context-row">
-                    <span class="context-key">Prompt</span>
+                <span class="context-key">指令</span>
                     <span class="context-value">${prompt}</span>
                 </div>
             ` : ''}
@@ -432,7 +432,7 @@ export class HistoryView extends LitElement {
     renderListView() {
         const filteredSessions = this.getFilteredSessions();
         return html`
-            <div class="page-title">History</div>
+            <div class="page-title">历史记录</div>
 
             <div class="search-wrap">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -442,7 +442,7 @@ export class HistoryView extends LitElement {
                 <input
                     class="control"
                     type="text"
-                    placeholder="Search sessions..."
+                    placeholder="搜索会话……"
                     .value=${this.searchQuery}
                     @input=${this.handleSearchInput}
                 />
@@ -450,8 +450,8 @@ export class HistoryView extends LitElement {
 
             <section class="list-shell">
                 <div class="sessions-list">
-                    ${this.loading ? html`<div class="empty" style="margin:var(--space-md);">Loading sessions...</div>` : ''}
-                    ${!this.loading && filteredSessions.length === 0 ? html`<div class="empty" style="margin:var(--space-md);">No matching sessions.</div>` : ''}
+                    ${this.loading ? html`<div class="empty" style="margin:var(--space-md);">正在加载会话……</div>` : ''}
+                    ${!this.loading && filteredSessions.length === 0 ? html`<div class="empty" style="margin:var(--space-md);">没有匹配的会话。</div>` : ''}
                     ${!this.loading ? filteredSessions.map(session => html`
                         <button class="session-card" @click=${() => this.openSession(session.sessionId)}>
                             <div class="session-left">
@@ -471,7 +471,7 @@ export class HistoryView extends LitElement {
         const screenCount = this.selectedSession?.screenAnalysisHistory?.length || 0;
 
         return html`
-            <div class="page-title">Session Detail</div>
+            <div class="page-title">会话详情</div>
             <div class="detail-top">
                 <button class="back-btn" @click=${this.closeSession}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -482,13 +482,13 @@ export class HistoryView extends LitElement {
             </div>
             <div class="tab-row">
                 <button class="tab-btn ${this.activeTab === 'conversation' ? 'active' : ''}" @click=${() => { this.activeTab = 'conversation'; }}>
-                    Conversation (${conversationCount})
+                    对话（${conversationCount}）
                 </button>
                 <button class="tab-btn ${this.activeTab === 'screen' ? 'active' : ''}" @click=${() => { this.activeTab = 'screen'; }}>
-                    Screen (${screenCount})
+                    屏幕（${screenCount}）
                 </button>
                 <button class="tab-btn ${this.activeTab === 'context' ? 'active' : ''}" @click=${() => { this.activeTab = 'context'; }}>
-                    Context
+                    背景信息
                 </button>
             </div>
             <section class="details-scroll">
