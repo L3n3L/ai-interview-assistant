@@ -16,6 +16,13 @@ let offscreenCanvas = null;
 let offscreenContext = null;
 let currentImageQuality = 'medium'; // Store current image quality for manual screenshots
 
+function reportAudioDiagnostic(type, data = {}) {
+    console.log(`[AudioDiagnostics] ${type}`, data);
+    ipcRenderer.invoke('log-audio-diagnostic', { type, data }).catch(error => {
+        console.warn('[AudioDiagnostics] Failed to persist diagnostic:', error.message);
+    });
+}
+
 const isLinux = process.platform === 'linux';
 const isMacOS = process.platform === 'darwin';
 
@@ -365,6 +372,32 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 },
             });
 
+            const audioTracks = mediaStream.getAudioTracks();
+            reportAudioDiagnostic('capture_started', {
+                platform: 'win32',
+                audioMode,
+                videoTrackCount: mediaStream.getVideoTracks().length,
+                audioTrackCount: audioTracks.length,
+                audioTracks: audioTracks.map(track => ({
+                    kind: track.kind,
+                    label: track.label,
+                    readyState: track.readyState,
+                    muted: track.muted,
+                    settings: {
+                        channelCount: track.getSettings().channelCount,
+                        sampleRate: track.getSettings().sampleRate,
+                    },
+                })),
+            });
+
+            if (audioTracks.length === 0) {
+                reportAudioDiagnostic('no_system_audio_track', {
+                    platform: 'win32',
+                    audioMode,
+                    message: 'getDisplayMedia returned no audio track',
+                });
+            }
+
             console.log('Windows capture started with loopback audio');
 
             // Setup audio processing for Windows loopback audio only
@@ -470,16 +503,58 @@ function setupLinuxSystemAudioProcessing() {
 
 function setupWindowsLoopbackProcessing() {
     // Setup audio processing for Windows loopback audio only
+    const audioTracks = mediaStream?.getAudioTracks() || [];
+    reportAudioDiagnostic('loopback_setup', {
+        audioTrackCount: audioTracks.length,
+        audioTracks: audioTracks.map(track => ({
+            label: track.label,
+            readyState: track.readyState,
+            muted: track.muted,
+            settings: {
+                channelCount: track.getSettings().channelCount,
+                sampleRate: track.getSettings().sampleRate,
+            },
+        })),
+    });
+
     audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
     const source = audioContext.createMediaStreamSource(mediaStream);
     audioProcessor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
 
     let audioBuffer = [];
     const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
+    let diagnosticSamples = 0;
+    let diagnosticSumSquares = 0;
+    let diagnosticPeak = 0;
+    let diagnosticChunks = 0;
+    let diagnosticStartedAt = performance.now();
 
     audioProcessor.onaudioprocess = async e => {
         const inputData = e.inputBuffer.getChannelData(0);
         audioBuffer.push(...inputData);
+
+        for (const sample of inputData) {
+            diagnosticSamples += 1;
+            diagnosticSumSquares += sample * sample;
+            diagnosticPeak = Math.max(diagnosticPeak, Math.abs(sample));
+        }
+        diagnosticChunks += 1;
+
+        const now = performance.now();
+        if (now - diagnosticStartedAt >= 1000) {
+            reportAudioDiagnostic('loopback_level', {
+                audioTrackCount: audioTracks.length,
+                chunks: diagnosticChunks,
+                samples: diagnosticSamples,
+                rms: Math.sqrt(diagnosticSumSquares / Math.max(1, diagnosticSamples)),
+                peak: diagnosticPeak,
+            });
+            diagnosticSamples = 0;
+            diagnosticSumSquares = 0;
+            diagnosticPeak = 0;
+            diagnosticChunks = 0;
+            diagnosticStartedAt = now;
+        }
 
         // Process audio in chunks
         while (audioBuffer.length >= samplesPerChunk) {

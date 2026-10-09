@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { getSystemPrompt } = require('./prompts');
 const { sendToRenderer, initializeNewSession, saveConversationTurn } = require('./gemini');
+const { logTransportEvent } = require('./transportLogger');
 const {
     ensureNativeBinary,
     ensureLlamaModel,
@@ -89,6 +90,10 @@ function processVad(pcm16kBuffer) {
             isSpeaking = true;
             speechBuffers = [];
             console.log('[LocalAI] Speech started (RMS:', rms.toFixed(4), ')');
+            logTransportEvent('audio.speech_started', {
+                rms: Number(rms.toFixed(4)),
+                threshold: vadConfig.energyThreshold,
+            });
             sendToRenderer('update-status', 'Listening... (speech detected)');
         }
     } else {
@@ -100,6 +105,10 @@ function processVad(pcm16kBuffer) {
             const audioData = Buffer.concat(speechBuffers);
             speechBuffers = [];
             console.log('[LocalAI] Speech ended, accumulated', audioData.length, 'bytes');
+            logTransportEvent('audio.speech_ended', {
+                pcmBytes: audioData.length,
+                durationMs: Math.round((audioData.length / 2 / 16000) * 1000),
+            });
             sendToRenderer('update-status', 'Transcribing...');
             handleSpeechEnd(audioData);
             return;
@@ -137,33 +146,61 @@ async function transcribeAudio(pcm16kBuffer) {
         throw new Error('Whisper server is not running');
     }
 
-    const wavBuffer = createWavBuffer(pcm16kBuffer);
-    const formData = new FormData();
-    formData.append('file', new Blob([wavBuffer], { type: 'audio/wav' }), 'speech.wav');
-    formData.append('response_format', 'json');
-    formData.append('temperature', '0.0');
-    formData.append('language', currentWhisperLanguage);
-
-    const response = await fetch(`${whisperBaseUrl}/inference`, {
-        method: 'POST',
-        body: formData,
+    const startedAt = Date.now();
+    const audioDurationMs = Math.round((pcm16kBuffer.length / 2 / 16000) * 1000);
+    logTransportEvent('whisper.inference_started', {
+        pcmBytes: pcm16kBuffer.length,
+        audioDurationMs,
+        language: currentWhisperLanguage,
     });
 
-    if (!response.ok) {
-        throw new Error(`Whisper server returned HTTP ${response.status}`);
-    }
+    try {
+        const wavBuffer = createWavBuffer(pcm16kBuffer);
+        const formData = new FormData();
+        formData.append('file', new Blob([wavBuffer], { type: 'audio/wav' }), 'speech.wav');
+        formData.append('response_format', 'json');
+        formData.append('temperature', '0.0');
+        formData.append('language', currentWhisperLanguage);
 
-    const result = await response.json();
-    const text = result.text?.trim() || '';
-    console.log('[LocalAI] Transcription:', text);
-    return text;
+        const response = await fetch(`${whisperBaseUrl}/inference`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error(`Whisper server returned HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const text = result.text?.trim() || '';
+        logTransportEvent('whisper.inference_completed', {
+            elapsedMs: Date.now() - startedAt,
+            audioDurationMs,
+            transcriptChars: text.length,
+        });
+        console.log('[LocalAI] Transcription:', text);
+        return text;
+    } catch (error) {
+        logTransportEvent('whisper.inference_failed', {
+            elapsedMs: Date.now() - startedAt,
+            audioDurationMs,
+            error: error.message,
+        });
+        throw error;
+    }
 }
 
 async function handleSpeechEnd(audioData) {
     if (!isLocalActive) return;
 
+    const turnStartedAt = Date.now();
+
     if (audioData.length < 16000) {
         console.log('[LocalAI] Audio too short, skipping');
+        logTransportEvent('audio.turn_skipped', {
+            reason: 'audio_too_short',
+            pcmBytes: audioData.length,
+        });
         sendToRenderer('update-status', 'Listening...');
         return;
     }
@@ -173,6 +210,10 @@ async function handleSpeechEnd(audioData) {
 
         if (!transcription || transcription.length < 2) {
             console.log('[LocalAI] Empty transcription, skipping');
+            logTransportEvent('audio.turn_skipped', {
+                reason: 'empty_transcription',
+                elapsedMs: Date.now() - turnStartedAt,
+            });
             sendToRenderer('update-status', 'Listening...');
             return;
         }
@@ -183,7 +224,16 @@ async function handleSpeechEnd(audioData) {
         } else {
             await sendToLlama(transcription);
         }
+        logTransportEvent('audio.turn_pipeline_completed', {
+            elapsedMs: Date.now() - turnStartedAt,
+            transcriptChars: transcription.length,
+            responseProvider: transcriptionHandler ? 'remote_handler' : 'local_llama',
+        });
     } catch (error) {
+        logTransportEvent('audio.turn_pipeline_failed', {
+            elapsedMs: Date.now() - turnStartedAt,
+            error: error.message,
+        });
         console.error('[LocalAI] Transcription error:', error);
         sendToRenderer('update-status', 'Transcription error: ' + error.message);
     }

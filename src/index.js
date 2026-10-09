@@ -5,6 +5,7 @@ if (require('electron-squirrel-startup')) {
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const { createWindow, updateGlobalShortcuts } = require('./utils/window');
 const { setupGeminiIpcHandlers, stopMacOSAudioCapture, sendToRenderer } = require('./utils/gemini');
+const { logTransportEvent } = require('./utils/transportLogger');
 const storage = require('./storage');
 
 const geminiSessionRef = { current: null };
@@ -315,5 +316,13 @@ function setupGeneralIpcHandlers() {
     // Debug logging from renderer
     ipcMain.on('log-message', (event, msg) => {
         console.log(msg);
+    });
+
+    ipcMain.handle('log-audio-diagnostic', async (event, payload = {}) => {
+        const type = typeof payload.type === 'string' ? payload.type.slice(0, 80) : 'unknown';
+        const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
+        console.log(`[AudioDiagnostics] ${type}`, data);
+        logTransportEvent(`audio.${type}`, data);
+        return { success: true };
     });
 }

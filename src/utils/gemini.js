@@ -275,39 +275,88 @@ async function requestDeepSeek(messages, onText) {
         throw new Error('No DeepSeek API key configured');
     }
 
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: currentDeepSeekModel || 'deepseek-flash',
-            messages,
-            stream: true,
-            temperature: 0.4,
-            max_tokens: 2048,
-        }),
+    const startedAt = Date.now();
+    let firstTokenAt = null;
+    const model = currentDeepSeekModel || 'deepseek-flash';
+    const timedOnText = text => {
+        if (firstTokenAt === null) {
+            firstTokenAt = Date.now();
+            logTransportEvent('deepseek.first_token', {
+                elapsedMs: firstTokenAt - startedAt,
+                textChars: text.length,
+            });
+        }
+        onText(text);
+    };
+
+    logTransportEvent('deepseek.request_started', {
+        model,
+        messageCount: messages.length,
+        inputChars: messages.reduce((total, message) => total + String(message.content || '').length, 0),
     });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`DeepSeek API returned HTTP ${response.status}: ${errorText.slice(0, 500)}`);
-    }
+    try {
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model,
+                messages,
+                stream: true,
+                temperature: 0.4,
+                max_tokens: 2048,
+            }),
+        });
 
-    return readDeepSeekStream(response, onText);
+        logTransportEvent('deepseek.http_response', {
+            status: response.status,
+            elapsedMs: Date.now() - startedAt,
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logTransportEvent('deepseek.http_error', {
+                status: response.status,
+                elapsedMs: Date.now() - startedAt,
+            });
+            throw new Error(`DeepSeek API returned HTTP ${response.status}: ${errorText.slice(0, 500)}`);
+        }
+
+        const fullText = await readDeepSeekStream(response, timedOnText);
+        logTransportEvent('deepseek.completed', {
+            elapsedMs: Date.now() - startedAt,
+            firstTokenMs: firstTokenAt === null ? null : firstTokenAt - startedAt,
+            responseChars: fullText.length,
+        });
+        return fullText;
+    } catch (error) {
+        logTransportEvent('deepseek.failed', {
+            elapsedMs: Date.now() - startedAt,
+            firstTokenMs: firstTokenAt === null ? null : firstTokenAt - startedAt,
+            error: error.message,
+        });
+        throw error;
+    }
 }
 
 async function sendToDeepSeek(transcription) {
     if (!transcription || transcription.trim() === '') return '';
 
     const trimmedText = transcription.trim();
+    const turnStartedAt = Date.now();
     deepseekConversationHistory.push({ role: 'user', content: trimmedText });
     if (deepseekConversationHistory.length > 20) {
         deepseekConversationHistory = deepseekConversationHistory.slice(-20);
     }
 
     try {
+        logTransportEvent('deepseek.turn_started', {
+            transcriptChars: trimmedText.length,
+            historyMessages: deepseekConversationHistory.length,
+        });
         let isFirst = true;
         const fullText = await requestDeepSeek(
             [{ role: 'system', content: currentSystemPrompt || 'You are a helpful assistant.' }, ...deepseekConversationHistory],
@@ -326,9 +375,17 @@ async function sendToDeepSeek(transcription) {
             saveConversationTurn(trimmedText, cleanedResponse);
         }
 
+        logTransportEvent('deepseek.turn_completed', {
+            elapsedMs: Date.now() - turnStartedAt,
+            responseChars: cleanedResponse.length,
+        });
         sendToRenderer('update-status', 'Listening...');
         return cleanedResponse;
     } catch (error) {
+        logTransportEvent('deepseek.turn_failed', {
+            elapsedMs: Date.now() - turnStartedAt,
+            error: error.message,
+        });
         console.error('Error calling DeepSeek API:', error.message);
         sendToRenderer('update-status', 'DeepSeek error: ' + error.message);
         return '';
