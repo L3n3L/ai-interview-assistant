@@ -19,9 +19,15 @@
         "cheating daddy ai assistant for interviews"
     ],
     "author": {
-        "name": "sohzm",
-        "email": "sohambharambe9@gmail.com"
+        "name": "L3n3L",
+        "url": "https://github.com/L3n3L"
     },
+    "contributors": [
+        {
+            "name": "sohzm",
+            "url": "https://github.com/sohzm/cheating-daddy"
+        }
+    ],
     "license": "GPL-3.0",
     "dependencies": {
         "@google/genai": "^1.2.0",
