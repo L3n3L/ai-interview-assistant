@@ -3,17 +3,10 @@ const { BrowserWindow, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const { saveDebugAudio } = require('../audioUtils');
 const { getSystemPrompt } = require('./prompts');
-const {
-    getAvailableModel,
-    incrementLimitCount,
-    getApiKey,
-    getGroqApiKey,
-    getDeepSeekApiKey,
-    incrementCharUsage,
-    getConfig,
-} = require('../storage');
+const { getAvailableModel, incrementLimitCount, getApiKey, getGroqApiKey, getDeepSeekApiKey, incrementCharUsage, getConfig } = require('../storage');
 const { connectCloud, sendCloudAudio, sendCloudText, sendCloudImage, closeCloud, isCloudActive, setOnTurnComplete } = require('./cloud');
 const { startTransportLog, logTransportEvent, closeTransportLog } = require('./transportLogger');
+const { QwenRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_REALTIME_MODEL } = require('./qwen-realtime');
 
 // Lazy-loaded to avoid circular dependency (localai.js imports from gemini.js)
 let _localai = null;
@@ -22,7 +15,7 @@ function getLocalAi() {
     return _localai;
 }
 
-// Provider mode: 'byok', 'cloud', 'local', or 'deepseek'
+// Provider mode: 'byok', 'cloud', 'local', 'deepseek', or 'qwen-realtime'
 let currentProviderMode = 'byok';
 
 // Groq conversation history for context
@@ -40,6 +33,12 @@ let currentProfile = null;
 let currentCustomPrompt = null;
 let isInitializingSession = false;
 let currentSystemPrompt = null;
+let qwenRealtimeSession = null;
+let qwenCurrentUserTranscript = '';
+let qwenCurrentResponseText = '';
+let qwenCurrentResponseId = null;
+let qwenFirstTokenAt = null;
+let qwenResponseStartedAt = null;
 
 function formatSpeakerResults(results) {
     let text = '';
@@ -75,6 +74,193 @@ function sendToRenderer(channel, data) {
     if (windows.length > 0) {
         windows[0].webContents.send(channel, data);
     }
+}
+
+function getQwenSystemPrompt(profile, customPrompt, language) {
+    const basePrompt = getSystemPrompt(profile, customPrompt, false);
+    if (/^(zh|cmn)/i.test(language || '')) {
+        return `${basePrompt}\n\n请始终使用简体中文回答。回答直接、准确、便于快速阅读，不要输出语音或无关说明。`;
+    }
+    return basePrompt;
+}
+
+function handleQwenRealtimeEvent(event) {
+    const type = event?.type;
+
+    if (type === 'session.created') {
+        logTransportEvent('qwen.session_created', { sessionId: event.session?.id || null });
+        return;
+    }
+
+    if (type === 'session.updated') {
+        logTransportEvent('qwen.session_updated', {
+            model: event.session?.model || null,
+            turnDetection: event.session?.turn_detection?.type || null,
+            modalities: event.session?.modalities || [],
+        });
+        sendToRenderer('update-status', 'Qwen 实时会话已连接');
+        return;
+    }
+
+    if (type === 'input_audio_buffer.speech_started') {
+        qwenCurrentUserTranscript = '';
+        logTransportEvent('qwen.speech_started', { itemId: event.item_id || null });
+        sendToRenderer('update-status', '正在聆听…');
+        return;
+    }
+
+    if (type === 'input_audio_buffer.speech_stopped') {
+        logTransportEvent('qwen.speech_stopped', {
+            itemId: event.item_id || null,
+            reason: event.reason || 'valid_turn',
+            audioEndMs: event.audio_end_ms ?? null,
+        });
+        return;
+    }
+
+    if (type === 'conversation.item.input_audio_transcription.delta') {
+        // `stash` is provisional and can be replaced by a later event, so only
+        // accumulate the confirmed text here. The completed event is authoritative.
+        qwenCurrentUserTranscript += event.text || '';
+        return;
+    }
+
+    if (type === 'conversation.item.input_audio_transcription.completed') {
+        qwenCurrentUserTranscript = String(event.transcript || qwenCurrentUserTranscript).trim();
+        logTransportEvent('qwen.transcription_completed', {
+            itemId: event.item_id || null,
+            transcriptChars: qwenCurrentUserTranscript.length,
+        });
+        return;
+    }
+
+    if (type === 'conversation.item.input_audio_transcription.failed') {
+        logTransportEvent('qwen.transcription_failed', {
+            itemId: event.item_id || null,
+            error: event.error?.message || 'unknown',
+        });
+        return;
+    }
+
+    if (type === 'response.created') {
+        qwenCurrentResponseId = event.response?.id || null;
+        qwenCurrentResponseText = '';
+        qwenFirstTokenAt = null;
+        qwenResponseStartedAt = Date.now();
+        logTransportEvent('qwen.response_started', { responseId: qwenCurrentResponseId });
+        sendToRenderer('new-response', '');
+        sendToRenderer('update-status', '正在生成回答…');
+        return;
+    }
+
+    if (type === 'response.text.delta') {
+        if (qwenFirstTokenAt === null) {
+            qwenFirstTokenAt = Date.now();
+            logTransportEvent('qwen.first_text_received', { responseId: qwenCurrentResponseId });
+        }
+        qwenCurrentResponseText += event.delta || '';
+        sendToRenderer('update-response', qwenCurrentResponseText);
+        return;
+    }
+
+    if (type === 'response.text.done') {
+        qwenCurrentResponseText = String(event.text || qwenCurrentResponseText);
+        sendToRenderer('update-response', qwenCurrentResponseText);
+        return;
+    }
+
+    if (type === 'response.done') {
+        const status = event.response?.status || 'completed';
+        const responseId = event.response?.id || qwenCurrentResponseId;
+        logTransportEvent('qwen.response_completed', {
+            responseId,
+            status,
+            transcriptChars: qwenCurrentUserTranscript.length,
+            responseChars: qwenCurrentResponseText.length,
+            firstTextMs: qwenFirstTokenAt === null || qwenResponseStartedAt === null ? null : qwenFirstTokenAt - qwenResponseStartedAt,
+            totalResponseMs: qwenResponseStartedAt === null ? null : Date.now() - qwenResponseStartedAt,
+        });
+
+        if (status === 'cancelled' || status === 'canceled') {
+            // A partial answer must not become a completed conversation turn.
+            sendToRenderer('discard-current-response', { responseId });
+        } else if (qwenCurrentUserTranscript && qwenCurrentResponseText.trim()) {
+            saveConversationTurn(qwenCurrentUserTranscript, qwenCurrentResponseText);
+        }
+
+        qwenCurrentResponseId = null;
+        qwenCurrentResponseText = '';
+        qwenFirstTokenAt = null;
+        qwenResponseStartedAt = null;
+        sendToRenderer('update-status', '正在聆听…');
+        return;
+    }
+
+    if (type === 'error') {
+        const message = event.error?.message || 'Qwen 实时接口返回未知错误';
+        logTransportEvent('qwen.api_error', {
+            errorType: event.error?.type || null,
+            code: event.error?.code || null,
+            message,
+        });
+        sendToRenderer('update-status', 'Qwen 错误：' + message);
+        return;
+    }
+
+    if (type === 'transport.error' || type === 'transport.closed') {
+        if (!event.userInitiated) {
+            const message = event.error?.message || `Qwen 连接已关闭（${event.code || 'unknown'}）`;
+            sendToRenderer('update-status', 'Qwen 连接中断：' + message);
+        }
+    }
+}
+
+async function initializeQwenRealtimeSession(
+    apiKey,
+    model = DEFAULT_QWEN_REALTIME_MODEL,
+    customPrompt = '',
+    profile = 'interview',
+    language = 'cmn-CN'
+) {
+    if (!apiKey || !apiKey.trim()) return false;
+
+    closeQwenRealtimeSession();
+    currentProviderMode = 'qwen-realtime';
+    qwenCurrentUserTranscript = '';
+    qwenCurrentResponseText = '';
+    initializeNewSession(profile, customPrompt);
+
+    const session = new QwenRealtimeSession({
+        apiKey: apiKey.trim(),
+        model: model || DEFAULT_QWEN_REALTIME_MODEL,
+        language,
+        instructions: getQwenSystemPrompt(profile, customPrompt, language),
+        onEvent: handleQwenRealtimeEvent,
+    });
+    qwenRealtimeSession = session;
+
+    try {
+        await session.connect();
+        return true;
+    } catch (error) {
+        console.error('[QwenRealtime] Initialization failed:', error.message);
+        logTransportEvent('qwen.initialization_failed', { error: error.message });
+        closeQwenRealtimeSession();
+        currentProviderMode = 'byok';
+        sendToRenderer('update-status', 'Qwen 初始化失败：' + error.message);
+        return false;
+    }
+}
+
+function closeQwenRealtimeSession() {
+    if (qwenRealtimeSession) {
+        qwenRealtimeSession.close();
+        qwenRealtimeSession = null;
+    }
+    qwenCurrentUserTranscript = '';
+    qwenCurrentResponseText = '';
+    qwenCurrentResponseId = null;
+    qwenResponseStartedAt = null;
 }
 
 // Build context message for session restoration
@@ -1324,12 +1510,8 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 ? `${basePrompt}\n\nAlways answer in Simplified Chinese unless the user explicitly asks for another language.`
                 : basePrompt;
 
-            const success = await getLocalAi().initializeWhisperSession(
-                whisperModel,
-                profile,
-                customPrompt,
-                language,
-                transcription => sendToDeepSeek(transcription)
+            const success = await getLocalAi().initializeWhisperSession(whisperModel, profile, customPrompt, language, transcription =>
+                sendToDeepSeek(transcription)
             );
             if (!success) {
                 currentProviderMode = 'byok';
@@ -1340,6 +1522,23 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
             return success;
         }
     );
+
+    ipcMain.handle(
+        'initialize-qwen-realtime',
+        async (event, apiKey, model = DEFAULT_QWEN_REALTIME_MODEL, customPrompt = '', profile = 'interview', language = 'cmn-CN') => {
+            return initializeQwenRealtimeSession(apiKey, model, customPrompt, profile, language);
+        }
+    );
+
+    ipcMain.handle('cancel-qwen-response', async () => {
+        try {
+            if (!qwenRealtimeSession) return { success: false, error: '没有活动的 Qwen 会话' };
+            return { success: qwenRealtimeSession.cancelResponse() };
+        } catch (error) {
+            console.error('Error cancelling Qwen response:', error);
+            return { success: false, error: error.message };
+        }
+    });
 
     ipcMain.handle('initialize-local', async (event, localLlmModel, whisperModel, profile, customPrompt) => {
         currentProviderMode = 'local';
@@ -1359,6 +1558,17 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
     });
 
     ipcMain.handle('send-audio-content', async (event, { data, mimeType }) => {
+        if (currentProviderMode === 'qwen-realtime') {
+            try {
+                if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
+                const pcmBuffer = Buffer.from(data, 'base64');
+                qwenRealtimeSession.sendAudio(pcmBuffer);
+                return { success: true };
+            } catch (error) {
+                console.error('Error sending Qwen system audio:', error);
+                return { success: false, error: error.message };
+            }
+        }
         if (currentProviderMode === 'cloud') {
             try {
                 const pcmBuffer = Buffer.from(data, 'base64');
@@ -1404,6 +1614,17 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     // Handle microphone audio on a separate channel
     ipcMain.handle('send-mic-audio-content', async (event, { data, mimeType }) => {
+        if (currentProviderMode === 'qwen-realtime') {
+            try {
+                if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
+                const pcmBuffer = Buffer.from(data, 'base64');
+                qwenRealtimeSession.sendAudio(pcmBuffer);
+                return { success: true };
+            } catch (error) {
+                console.error('Error sending Qwen microphone audio:', error);
+                return { success: false, error: error.message };
+            }
+        }
         if (currentProviderMode === 'cloud') {
             try {
                 const pcmBuffer = Buffer.from(data, 'base64');
@@ -1480,6 +1701,10 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 return await sendImageToDeepSeek(data, prompt);
             }
 
+            if (currentProviderMode === 'qwen-realtime') {
+                return { success: false, error: 'Qwen 实时模式当前只支持语音和文本输入，不支持截图输入' };
+            }
+
             const result = hasGroqKey() ? await sendImageToGroq(data, prompt) : await sendImageToGeminiHttp(data, prompt);
             return result;
         } catch (error) {
@@ -1516,7 +1741,21 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
         if (currentProviderMode === 'deepseek') {
             const response = await sendToDeepSeek(text.trim());
-            return response ? { success: true, text: response, model: currentDeepSeekModel } : { success: false, error: 'DeepSeek returned no response' };
+            return response
+                ? { success: true, text: response, model: currentDeepSeekModel }
+                : { success: false, error: 'DeepSeek returned no response' };
+        }
+
+        if (currentProviderMode === 'qwen-realtime') {
+            try {
+                if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
+                qwenCurrentUserTranscript = text.trim();
+                qwenRealtimeSession.sendTextMessage(text.trim());
+                return { success: true };
+            } catch (error) {
+                console.error('Error sending Qwen text:', error);
+                return { success: false, error: error.message };
+            }
         }
 
         if (!geminiSessionRef.current) return { success: false, error: 'No active Gemini session' };
@@ -1567,6 +1806,13 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
     ipcMain.handle('close-session', async event => {
         try {
             stopMacOSAudioCapture();
+
+            if (currentProviderMode === 'qwen-realtime') {
+                closeQwenRealtimeSession();
+                currentProviderMode = 'byok';
+                closeTransportLog();
+                return { success: true };
+            }
 
             if (currentProviderMode === 'cloud') {
                 closeCloud();
@@ -1659,4 +1905,6 @@ module.exports = {
     sendImageToGeminiHttp,
     setupGeminiIpcHandlers,
     formatSpeakerResults,
+    initializeQwenRealtimeSession,
+    closeQwenRealtimeSession,
 };

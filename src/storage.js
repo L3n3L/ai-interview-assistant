@@ -11,6 +11,7 @@ const DEFAULT_CONFIG = {
     layout: 'normal',
     geminiLiveModel: 'gemini-3.1-flash-live-preview',
     deepseekModel: 'deepseek-flash',
+    qwenRealtimeModel: 'qwen-audio-3.1-realtime-plus',
     groqModel: 'qwen/qwen3.6-27b',
     groqImageModel: 'qwen/qwen3.6-27b',
     disableGroqThinking: true,
@@ -20,6 +21,7 @@ const DEFAULT_CREDENTIALS = {
     apiKey: '',
     groqApiKey: '',
     deepseekApiKey: '',
+    qwenRealtimeApiKey: '',
 };
 
 const DEFAULT_PREFERENCES = {
@@ -224,6 +226,14 @@ function getDeepSeekApiKey() {
 
 function setDeepSeekApiKey(deepseekApiKey) {
     return setCredentials({ deepseekApiKey });
+}
+
+function getQwenRealtimeApiKey() {
+    return getCredentials().qwenRealtimeApiKey || process.env.QWEN_REALTIME_API_KEY || '';
+}
+
+function setQwenRealtimeApiKey(qwenRealtimeApiKey) {
+    return setCredentials({ qwenRealtimeApiKey });
 }
 
 // ============ PREFERENCES ============
@@ -532,6 +542,8 @@ module.exports = {
     setGroqApiKey,
     getDeepSeekApiKey,
     setDeepSeekApiKey,
+    getQwenRealtimeApiKey,
+    setQwenRealtimeApiKey,
 
     // Preferences
     getPreferences,

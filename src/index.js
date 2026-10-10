@@ -4,7 +4,7 @@ if (require('electron-squirrel-startup')) {
 
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const { createWindow, updateGlobalShortcuts } = require('./utils/window');
-const { setupGeminiIpcHandlers, stopMacOSAudioCapture, sendToRenderer } = require('./utils/gemini');
+const { setupGeminiIpcHandlers, stopMacOSAudioCapture, closeQwenRealtimeSession, sendToRenderer } = require('./utils/gemini');
 const { logTransportEvent } = require('./utils/transportLogger');
 const storage = require('./storage');
 
@@ -41,6 +41,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
     stopMacOSAudioCapture();
+    closeQwenRealtimeSession();
     require('./utils/localai').closeLocalSession();
 });
 
@@ -154,6 +155,25 @@ function setupStorageIpcHandlers() {
             return { success: true };
         } catch (error) {
             console.error('Error setting DeepSeek API key:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('storage:get-qwen-realtime-api-key', async () => {
+        try {
+            return { success: true, data: storage.getQwenRealtimeApiKey() };
+        } catch (error) {
+            console.error('Error getting Qwen realtime API key:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('storage:set-qwen-realtime-api-key', async (event, qwenRealtimeApiKey) => {
+        try {
+            storage.setQwenRealtimeApiKey(qwenRealtimeApiKey);
+            return { success: true };
+        } catch (error) {
+            console.error('Error setting Qwen realtime API key:', error);
             return { success: false, error: error.message };
         }
     });

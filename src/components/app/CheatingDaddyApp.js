@@ -13,6 +13,7 @@ function translateStatus(text) {
         Live: '实时连接',
         'Local AI Live': '本地 AI 已连接',
         'DeepSeek Live': 'DeepSeek 已连接',
+        'Qwen 实时已连接': 'Qwen 实时已连接',
         'Live session connected': '实时会话已连接',
         'Session closed': '会话已关闭',
         'Listening...': '正在聆听…',
@@ -496,6 +497,7 @@ export class CheatingDaddyApp extends LitElement {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.on('new-response', (_, response) => this.addNewResponse(response));
             ipcRenderer.on('update-response', (_, response) => this.updateCurrentResponse(response));
+            ipcRenderer.on('discard-current-response', () => this.discardCurrentResponse());
             ipcRenderer.on('update-status', (_, status) => this.setStatus(status));
             ipcRenderer.on('click-through-toggled', (_, isEnabled) => {
                 this._isClickThrough = isEnabled;
@@ -517,6 +519,7 @@ export class CheatingDaddyApp extends LitElement {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.removeAllListeners('new-response');
             ipcRenderer.removeAllListeners('update-response');
+            ipcRenderer.removeAllListeners('discard-current-response');
             ipcRenderer.removeAllListeners('update-status');
             ipcRenderer.removeAllListeners('click-through-toggled');
             ipcRenderer.removeAllListeners('reconnect-failed');
@@ -577,6 +580,15 @@ export class CheatingDaddyApp extends LitElement {
         } else {
             this.addNewResponse(response);
         }
+        this.requestUpdate();
+    }
+
+    discardCurrentResponse() {
+        if (this.responses.length === 0) return;
+        const isLatest = this.currentResponseIndex === this.responses.length - 1;
+        this.responses = this.responses.slice(0, -1);
+        this.currentResponseIndex =
+            this.responses.length === 0 ? -1 : isLatest ? this.responses.length - 1 : Math.min(this.currentResponseIndex, this.responses.length - 1);
         this.requestUpdate();
     }
 
@@ -645,6 +657,15 @@ export class CheatingDaddyApp extends LitElement {
             }
         } else if (providerMode === 'local') {
             const success = await cheatingDaddy.initializeLocal(this.selectedProfile);
+            if (!success) {
+                const mainView = this.shadowRoot.querySelector('main-view');
+                if (mainView && mainView.triggerApiKeyError) {
+                    mainView.triggerApiKeyError();
+                }
+                return;
+            }
+        } else if (providerMode === 'qwen-realtime') {
+            const success = await cheatingDaddy.initializeQwenRealtime(this.selectedProfile, this.selectedLanguage);
             if (!success) {
                 const mainView = this.shadowRoot.querySelector('main-view');
                 if (mainView && mainView.triggerApiKeyError) {
@@ -953,7 +974,10 @@ export class CheatingDaddyApp extends LitElement {
                     ${
                         this._updateAvailable
                             ? html`
-                                  <button class="update-btn" @click=${() => this.handleExternalLinkClick('https://github.com/L3n3L/ai-interview-assistant/releases')}>
+                                  <button
+                                      class="update-btn"
+                                      @click=${() => this.handleExternalLinkClick('https://github.com/L3n3L/ai-interview-assistant/releases')}
+                                  >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                           <path
                                               fill="none"

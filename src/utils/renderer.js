@@ -10,6 +10,7 @@ let audioBuffer = [];
 const SAMPLE_RATE = 24000;
 const AUDIO_CHUNK_DURATION = 0.1; // seconds
 const BUFFER_SIZE = 4096; // Increased buffer size for smoother audio
+let activeAudioChunkDuration = AUDIO_CHUNK_DURATION;
 
 let hiddenVideo = null;
 let offscreenCanvas = null;
@@ -69,6 +70,13 @@ const storage = {
     },
     async setDeepSeekApiKey(deepseekApiKey) {
         return ipcRenderer.invoke('storage:set-deepseek-api-key', deepseekApiKey);
+    },
+    async getQwenRealtimeApiKey() {
+        const result = await ipcRenderer.invoke('storage:get-qwen-realtime-api-key');
+        return result.success ? result.data : '';
+    },
+    async setQwenRealtimeApiKey(qwenRealtimeApiKey) {
+        return ipcRenderer.invoke('storage:set-qwen-realtime-api-key', qwenRealtimeApiKey);
     },
 
     // Preferences
@@ -194,18 +202,30 @@ async function initializeDeepSeek(profile = 'interview', language = 'cmn-CN') {
     const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
     const whisperModel = 'tiny';
     const model = config.deepseekModel || 'deepseek-flash';
-    const success = await ipcRenderer.invoke(
-        'initialize-deepseek',
-        apiKey,
-        model,
-        prefs.customPrompt || '',
-        profile,
-        language,
-        whisperModel
-    );
+    const success = await ipcRenderer.invoke('initialize-deepseek', apiKey, model, prefs.customPrompt || '', profile, language, whisperModel);
 
     if (success) {
         cheatingDaddy.setStatus('DeepSeek Live');
+        return true;
+    }
+
+    cheatingDaddy.setStatus('error');
+    return false;
+}
+
+async function initializeQwenRealtime(profile = 'interview', language = 'cmn-CN') {
+    const apiKey = await storage.getQwenRealtimeApiKey();
+    if (!apiKey || !apiKey.trim()) {
+        cheatingDaddy.setStatus('error');
+        return false;
+    }
+
+    const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
+    const model = config.qwenRealtimeModel || 'qwen-audio-3.1-realtime-plus';
+    const success = await ipcRenderer.invoke('initialize-qwen-realtime', apiKey, model, prefs.customPrompt || '', profile, language);
+
+    if (success) {
+        cheatingDaddy.setStatus('Qwen 实时已连接');
         return true;
     }
 
@@ -249,6 +269,9 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
     // Refresh preferences cache
     await loadPreferencesCache();
     const audioMode = preferencesCache.audioMode || 'speaker_only';
+    // Qwen recommends frequent 20–40 ms frames. Keep the legacy 100 ms
+    // cadence for the existing providers so their VAD behavior is unchanged.
+    activeAudioChunkDuration = preferencesCache.providerMode === 'qwen-realtime' ? 0.04 : AUDIO_CHUNK_DURATION;
 
     try {
         if (isMacOS) {
@@ -445,7 +468,7 @@ function setupLinuxMicProcessing(micStream) {
     const micProcessor = micAudioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
 
     let audioBuffer = [];
-    const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
+    const samplesPerChunk = SAMPLE_RATE * activeAudioChunkDuration;
 
     micProcessor.onaudioprocess = async e => {
         const inputData = e.inputBuffer.getChannelData(0);
@@ -478,7 +501,7 @@ function setupLinuxSystemAudioProcessing() {
     audioProcessor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
 
     let audioBuffer = [];
-    const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
+    const samplesPerChunk = SAMPLE_RATE * activeAudioChunkDuration;
 
     audioProcessor.onaudioprocess = async e => {
         const inputData = e.inputBuffer.getChannelData(0);
@@ -522,7 +545,7 @@ function setupWindowsLoopbackProcessing() {
     audioProcessor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
 
     let audioBuffer = [];
-    const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
+    const samplesPerChunk = SAMPLE_RATE * activeAudioChunkDuration;
     let diagnosticSamples = 0;
     let diagnosticSumSquares = 0;
     let diagnosticPeak = 0;
@@ -818,6 +841,7 @@ function stopCapture() {
     }
     offscreenCanvas = null;
     offscreenContext = null;
+    activeAudioChunkDuration = AUDIO_CHUNK_DURATION;
 }
 
 // Send text message to Gemini
@@ -1201,6 +1225,7 @@ const cheatingDaddy = {
     initializeCloud,
     initializeLocal,
     initializeDeepSeek,
+    initializeQwenRealtime,
     cancelLocalInitialization,
     startCapture,
     stopCapture,

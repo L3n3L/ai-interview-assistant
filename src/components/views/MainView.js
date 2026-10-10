@@ -698,11 +698,13 @@ export class MainView extends LitElement {
         _geminiKey: { state: true },
         _groqKey: { state: true },
         _deepseekKey: { state: true },
+        _qwenKey: { state: true },
         _openaiKey: { state: true },
         _geminiLiveModel: { state: true },
         _groqModel: { state: true },
         _groqImageModel: { state: true },
         _deepseekModel: { state: true },
+        _qwenModel: { state: true },
         _disableGroqThinking: { state: true },
         _tokenError: { state: true },
         _keyError: { state: true },
@@ -729,11 +731,13 @@ export class MainView extends LitElement {
         this._geminiKey = '';
         this._groqKey = '';
         this._deepseekKey = '';
+        this._qwenKey = '';
         this._openaiKey = '';
         this._geminiLiveModel = 'gemini-3.1-flash-live-preview';
         this._groqModel = 'qwen/qwen3.6-27b';
         this._groqImageModel = 'qwen/qwen3.6-27b';
         this._deepseekModel = 'deepseek-flash';
+        this._qwenModel = 'qwen-audio-3.1-realtime-plus';
         this._disableGroqThinking = true;
         this._tokenError = false;
         this._keyError = false;
@@ -771,11 +775,13 @@ export class MainView extends LitElement {
             this._geminiKey = (await cheatingDaddy.storage.getApiKey().catch(() => '')) || '';
             this._groqKey = (await cheatingDaddy.storage.getGroqApiKey().catch(() => '')) || '';
             this._deepseekKey = (await cheatingDaddy.storage.getDeepSeekApiKey().catch(() => '')) || '';
+            this._qwenKey = (await cheatingDaddy.storage.getQwenRealtimeApiKey().catch(() => '')) || '';
             this._openaiKey = creds.openaiKey || '';
             this._geminiLiveModel = config.geminiLiveModel || 'gemini-3.1-flash-live-preview';
             this._groqModel = config.groqModel || 'qwen/qwen3.6-27b';
             this._groqImageModel = config.groqImageModel || 'qwen/qwen3.6-27b';
             this._deepseekModel = config.deepseekModel || 'deepseek-flash';
+            this._qwenModel = config.qwenRealtimeModel || 'qwen-audio-3.1-realtime-plus';
             this._disableGroqThinking = config.disableGroqThinking === true;
 
             // Load local AI settings
@@ -958,6 +964,13 @@ export class MainView extends LitElement {
         this.requestUpdate();
     }
 
+    async _saveQwenKey(val) {
+        this._qwenKey = val;
+        this._keyError = false;
+        await cheatingDaddy.storage.setQwenRealtimeApiKey(val);
+        this.requestUpdate();
+    }
+
     async _saveGeminiLiveModel(val) {
         this._geminiLiveModel = val;
         await cheatingDaddy.storage.updateConfig('geminiLiveModel', val);
@@ -979,6 +992,12 @@ export class MainView extends LitElement {
     async _saveDeepSeekModel(val) {
         this._deepseekModel = val;
         await cheatingDaddy.storage.updateConfig('deepseekModel', val);
+        this.requestUpdate();
+    }
+
+    async _saveQwenModel(val) {
+        this._qwenModel = val;
+        await cheatingDaddy.storage.updateConfig('qwenRealtimeModel', val);
         this.requestUpdate();
     }
 
@@ -1049,6 +1068,12 @@ export class MainView extends LitElement {
             }
         } else if (this._mode === 'deepseek') {
             if (!this._deepseekKey.trim()) {
+                this._keyError = true;
+                this.requestUpdate();
+                return;
+            }
+        } else if (this._mode === 'qwen-realtime') {
+            if (!this._qwenKey.trim()) {
                 this._keyError = true;
                 this.requestUpdate();
                 return;
@@ -1252,9 +1277,7 @@ export class MainView extends LitElement {
                         </span>
                     </label>
 
-                    <div class="config-note">
-                        如果没有填写 Groq API 密钥，将使用 Gemini Live 回复，回答质量可能有所不同。
-                    </div>
+                    <div class="config-note">如果没有填写 Groq API 密钥，将使用 Gemini Live 回复，回答质量可能有所不同。</div>
                 </div>
             </details>
 
@@ -1263,6 +1286,52 @@ export class MainView extends LitElement {
             <!-- Cloud promo intentionally removed from the active UI. -->
 
             <div class="mode-links">
+                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 Qwen 实时语音</button>
+                <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
+                <button class="mode-link" @click=${() => this._saveMode('local')}>使用本地 AI</button>
+            </div>
+        `;
+    }
+
+    // ── Qwen realtime mode ──
+
+    _renderQwenRealtimeMode() {
+        return html`
+            <details class="config-section" open>
+                <summary class="config-summary">
+                    <span class="config-summary-text">
+                        <span class="config-summary-title">Qwen 实时语音</span>
+                        <span class="config-summary-description">官方实时语音理解 + 纯文本回答</span>
+                    </span>
+                    ${this._renderConfigChevron()}
+                </summary>
+                <div class="config-content">
+                    <div class="form-group">
+                        <label class="form-label">Qwen API 密钥</label>
+                        <input
+                            type="password"
+                            placeholder="必填"
+                            .value=${this._qwenKey}
+                            @input=${e => this._saveQwenKey(e.target.value)}
+                            class=${this._keyError ? 'error' : ''}
+                        />
+                        <div class="form-hint">
+                            <span class="link" @click=${() => this.onExternalLink('https://bailian.console.aliyun.com/')}>获取百炼密钥</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">实时模型</label>
+                        <input type="text" .value=${this._qwenModel} @input=${e => this._saveQwenModel(e.target.value)} />
+                        <div class="form-hint">默认使用 qwen-audio-3.1-realtime-plus；输入音频由官方实时接口转写，回答只返回文本。</div>
+                    </div>
+                </div>
+            </details>
+
+            ${this._renderStartButton()} ${this._renderDivider()}
+
+            <div class="mode-links">
+                <button class="mode-link" @click=${() => this._saveMode('byok')}>使用 Gemini / Groq</button>
                 <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
                 <button class="mode-link" @click=${() => this._saveMode('local')}>使用本地 AI</button>
             </div>
@@ -1315,6 +1384,7 @@ export class MainView extends LitElement {
             ${this._renderStartButton()} ${this._renderDivider()}
 
             <div class="mode-links">
+                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 Qwen 实时语音</button>
                 <button class="mode-link" @click=${() => this._saveMode('byok')}>使用 Gemini / Groq</button>
                 <button class="mode-link" @click=${() => this._saveMode('local')}>使用本地 AI</button>
             </div>
@@ -1387,6 +1457,7 @@ export class MainView extends LitElement {
             <!-- Cloud promo intentionally removed from the active UI. -->
 
             <div class="mode-links">
+                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 Qwen 实时语音</button>
                 <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
                 <button class="mode-link" @click=${() => this._saveMode('byok')}>使用 Gemini / Groq</button>
             </div>
@@ -1409,22 +1480,35 @@ export class MainView extends LitElement {
         return html`
             <div class="form-wrapper">
                 ${
-                    this._mode === 'local' || this._mode === 'deepseek'
+                    this._mode === 'local' || this._mode === 'deepseek' || this._mode === 'qwen-realtime'
                         ? html`
                               <div class="title-row">
-                                  <div class="page-title">AI面试助手 <span class="mode-suffix">${this._mode === 'deepseek' ? 'DeepSeek' : '本地 AI'}</span></div>
+                                  <div class="page-title">
+                                      AI面试助手
+                                      <span class="mode-suffix"
+                                          >${this._mode === 'deepseek' ? 'DeepSeek' : this._mode === 'qwen-realtime' ? 'Qwen 实时' : '本地 AI'}</span
+                                      >
+                                  </div>
                                   ${this._mode === 'local' ? html`<button class="help-btn" @click=${this._openLocalHelp} aria-label="打开本地 AI 帮助">${helpIcon}</button>` : ''}
                               </div>
                           `
                         : html` <div class="page-title">${html`AI面试助手 <span class="mode-suffix">BYOK</span>`}</div> `
                 }
                 <div class="page-subtitle">
-                    ${this._mode === 'byok' ? '使用你自己的 API 密钥' : this._mode === 'deepseek' ? 'DeepSeek 负责回复，本地负责语音转写' : '在本机运行模型'}
+                    ${
+                        this._mode === 'byok'
+                            ? '使用你自己的 API 密钥'
+                            : this._mode === 'deepseek'
+                              ? 'DeepSeek 负责回复，本地负责语音转写'
+                              : this._mode === 'qwen-realtime'
+                                ? 'Qwen 负责实时语音理解和文本回答'
+                                : '在本机运行模型'
+                    }
                 </div>
 
                 <!-- Cloud mode render branch intentionally disabled. -->
-                ${this._mode === 'byok' ? this._renderByokMode() : ''} ${this._mode === 'deepseek' ? this._renderDeepSeekMode() : ''}
-                ${this._mode === 'local' ? this._renderLocalMode() : ''}
+                ${this._mode === 'byok' ? this._renderByokMode() : ''} ${this._mode === 'qwen-realtime' ? this._renderQwenRealtimeMode() : ''}
+                ${this._mode === 'deepseek' ? this._renderDeepSeekMode() : ''} ${this._mode === 'local' ? this._renderLocalMode() : ''}
             </div>
             ${this._mode === 'local' && this._showLocalHelp ? this._renderLocalHelp(closeIcon) : ''}
         `;
@@ -1465,9 +1549,7 @@ export class MainView extends LitElement {
 
                         <div class="help-section">
                             <div class="help-section-title">Whisper</div>
-                            <div class="help-section-text">
-                                选定的 whisper.cpp 模型只需自动下载一次，之后会保存在数据目录中。
-                            </div>
+                            <div class="help-section-text">选定的 whisper.cpp 模型只需自动下载一次，之后会保存在数据目录中。</div>
                         </div>
 
                         <hr class="help-divider" />
@@ -1475,7 +1557,8 @@ export class MainView extends LitElement {
                         <div class="help-section">
                             <div class="help-section-title">电脑卡顿或变慢？</div>
                             <div class="help-section-text">
-                                本地运行模型会占用较多内存和 CPU。如果电脑变慢或卡顿，通常是语言模型负载较高。需要使用线上模型时，可以切换回 API 模式。
+                                本地运行模型会占用较多内存和 CPU。如果电脑变慢或卡顿，通常是语言模型负载较高。需要使用线上模型时，可以切换回 API
+                                模式。
                             </div>
                         </div>
 
