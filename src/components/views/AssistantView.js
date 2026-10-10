@@ -1,5 +1,7 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 
+const RESPONSE_PAGE_SIZE = 3;
+
 export class AssistantView extends LitElement {
     static styles = css`
         :host {
@@ -39,6 +41,21 @@ export class AssistantView extends LitElement {
 
         .response-container [data-word] {
             display: inline-block;
+        }
+
+        .response-item {
+            padding: var(--space-sm) 0 var(--space-md);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .response-item:last-child {
+            border-bottom: none;
+        }
+
+        .response-item-label {
+            margin-bottom: var(--space-xs);
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
         }
 
         /* ── Markdown ── */
@@ -337,6 +354,12 @@ export class AssistantView extends LitElement {
             : `正在聆听${profileNames[this.selectedProfile] || '会话'}……`;
     }
 
+    getCurrentPageStart() {
+        if (this.responses.length === 0 || this.currentResponseIndex < 0) return 0;
+        const safeIndex = Math.min(this.currentResponseIndex, this.responses.length - 1);
+        return Math.floor(safeIndex / RESPONSE_PAGE_SIZE) * RESPONSE_PAGE_SIZE;
+    }
+
     renderMarkdown(content) {
         if (typeof window !== 'undefined' && window.marked) {
             try {
@@ -385,8 +408,9 @@ export class AssistantView extends LitElement {
     }
 
     navigateToPreviousResponse() {
-        if (this.currentResponseIndex > 0) {
-            this.currentResponseIndex--;
+        const currentPageStart = this.getCurrentPageStart();
+        if (currentPageStart > 0) {
+            this.currentResponseIndex = currentPageStart - RESPONSE_PAGE_SIZE;
             this.dispatchEvent(
                 new CustomEvent('response-index-changed', {
                     detail: { index: this.currentResponseIndex },
@@ -397,8 +421,10 @@ export class AssistantView extends LitElement {
     }
 
     navigateToNextResponse() {
-        if (this.currentResponseIndex < this.responses.length - 1) {
-            this.currentResponseIndex++;
+        const currentPageStart = this.getCurrentPageStart();
+        const nextPageStart = currentPageStart + RESPONSE_PAGE_SIZE;
+        if (nextPageStart < this.responses.length) {
+            this.currentResponseIndex = nextPageStart;
             this.dispatchEvent(
                 new CustomEvent('response-index-changed', {
                     detail: { index: this.currentResponseIndex },
@@ -655,8 +681,23 @@ export class AssistantView extends LitElement {
     updateResponseContent() {
         const container = this.shadowRoot.querySelector('#responseContainer');
         if (container) {
-            const currentResponse = this.getCurrentResponse();
-            const renderedResponse = this.renderMarkdown(currentResponse);
+            let renderedResponse;
+            if (this.responses.length === 0 || this.currentResponseIndex < 0) {
+                renderedResponse = this.renderMarkdown(this.getCurrentResponse());
+            } else {
+                const pageStart = this.getCurrentPageStart();
+                const visibleResponses = this.responses.slice(pageStart, pageStart + RESPONSE_PAGE_SIZE);
+                renderedResponse = visibleResponses
+                    .map(
+                        (response, offset) => `
+                            <article class="response-item">
+                                <div class="response-item-label">第 ${pageStart + offset + 1} 条回复</div>
+                                <div class="response-item-content">${this.renderMarkdown(response)}</div>
+                            </article>
+                        `
+                    )
+                    .join('');
+            }
             container.innerHTML = renderedResponse;
             if (this.shouldAnimateResponse) {
                 this.dispatchEvent(new CustomEvent('response-animation-complete', { bubbles: true, composed: true }));
@@ -665,20 +706,22 @@ export class AssistantView extends LitElement {
     }
 
     render() {
-        const hasMultipleResponses = this.responses.length > 1;
+        const hasMultipleResponses = this.responses.length > RESPONSE_PAGE_SIZE;
+        const pageStart = this.getCurrentPageStart();
+        const pageEnd = Math.min(pageStart + RESPONSE_PAGE_SIZE, this.responses.length);
 
         return html`
             <div class="response-container" id="responseContainer"></div>
 
             ${hasMultipleResponses ? html`
                 <div class="response-nav">
-                    <button class="nav-btn" @click=${this.navigateToPreviousResponse} ?disabled=${this.currentResponseIndex <= 0} title="上一条回复">
+                    <button class="nav-btn" @click=${this.navigateToPreviousResponse} ?disabled=${pageStart <= 0} title="上一组回复">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
                         </svg>
                     </button>
-                    <span class="response-counter">第 ${this.currentResponseIndex + 1} / ${this.responses.length} 条</span>
-                    <button class="nav-btn" @click=${this.navigateToNextResponse} ?disabled=${this.currentResponseIndex >= this.responses.length - 1} title="下一条回复">
+                    <span class="response-counter">第 ${pageStart + 1}-${pageEnd} / ${this.responses.length} 条</span>
+                    <button class="nav-btn" @click=${this.navigateToNextResponse} ?disabled=${pageEnd >= this.responses.length} title="下一组回复">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
                         </svg>

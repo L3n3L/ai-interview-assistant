@@ -8,6 +8,8 @@ import { OnboardingView } from '../views/OnboardingView.js';
 import { AICustomizeView } from '../views/AICustomizeView.js';
 import { FeedbackView } from '../views/FeedbackView.js';
 
+const RESPONSE_PAGE_SIZE = 3;
+
 function translateStatus(text) {
     const exactTranslations = {
         Live: '实时连接',
@@ -565,7 +567,12 @@ export class CheatingDaddyApp extends LitElement {
     }
 
     addNewResponse(response) {
-        const wasOnLatest = this.currentResponseIndex === this.responses.length - 1;
+        const latestPageStart = Math.floor(Math.max(0, this.responses.length - 1) / RESPONSE_PAGE_SIZE) * RESPONSE_PAGE_SIZE;
+        const currentPageStart =
+            this.currentResponseIndex < 0
+                ? -1
+                : Math.floor(this.currentResponseIndex / RESPONSE_PAGE_SIZE) * RESPONSE_PAGE_SIZE;
+        const wasOnLatest = currentPageStart === latestPageStart;
         this.responses = [...this.responses, response];
         if (wasOnLatest || this.currentResponseIndex === -1) {
             this.currentResponseIndex = this.responses.length - 1;
