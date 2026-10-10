@@ -94,13 +94,14 @@ function getDefaultKeybinds() {
     return {
         moveUp: isMac ? 'Alt+Up' : 'Ctrl+Up',
         moveDown: isMac ? 'Alt+Down' : 'Ctrl+Down',
-        moveLeft: isMac ? 'Alt+Left' : 'Ctrl+Left',
-        moveRight: isMac ? 'Alt+Right' : 'Ctrl+Right',
+        // Ctrl+Left/Right are reserved for navigating responses.
+        moveLeft: isMac ? 'Cmd+Shift+Left' : 'Ctrl+Shift+Left',
+        moveRight: isMac ? 'Cmd+Shift+Right' : 'Ctrl+Shift+Right',
         toggleVisibility: isMac ? 'Cmd+\\' : 'Ctrl+\\',
         toggleClickThrough: isMac ? 'Cmd+M' : 'Ctrl+M',
         nextStep: isMac ? 'Cmd+Enter' : 'Ctrl+Enter',
-        previousResponse: isMac ? 'Cmd+[' : 'Ctrl+[',
-        nextResponse: isMac ? 'Cmd+]' : 'Ctrl+]',
+        previousResponse: isMac ? 'Cmd+Left' : 'Ctrl+Left',
+        nextResponse: isMac ? 'Cmd+Right' : 'Ctrl+Right',
         scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
         scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
         emergencyErase: isMac ? 'Cmd+Shift+E' : 'Ctrl+Shift+E',

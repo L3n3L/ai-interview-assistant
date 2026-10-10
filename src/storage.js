@@ -265,8 +265,42 @@ function updatePreference(key, value) {
 
 // ============ KEYBINDS ============
 
+function migrateKeybinds(savedKeybinds) {
+    if (!savedKeybinds || typeof savedKeybinds !== 'object') {
+        return savedKeybinds;
+    }
+
+    const isMac = process.platform === 'darwin';
+    const defaults = {
+        moveLeft: isMac ? 'Cmd+Shift+Left' : 'Ctrl+Shift+Left',
+        moveRight: isMac ? 'Cmd+Shift+Right' : 'Ctrl+Shift+Right',
+        previousResponse: isMac ? 'Cmd+Left' : 'Ctrl+Left',
+        nextResponse: isMac ? 'Cmd+Right' : 'Ctrl+Right',
+    };
+    const legacyDefaults = {
+        moveLeft: isMac ? 'Alt+Left' : 'Ctrl+Left',
+        moveRight: isMac ? 'Alt+Right' : 'Ctrl+Right',
+        previousResponse: isMac ? 'Cmd+[' : 'Ctrl+[',
+        nextResponse: isMac ? 'Cmd+]' : 'Ctrl+]',
+    };
+
+    const migrated = { ...savedKeybinds };
+    let changed = false;
+    for (const key of Object.keys(defaults)) {
+        if (migrated[key] === legacyDefaults[key]) {
+            migrated[key] = defaults[key];
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        writeJsonFile(getKeybindsPath(), migrated);
+    }
+    return migrated;
+}
+
 function getKeybinds() {
-    return readJsonFile(getKeybindsPath(), DEFAULT_KEYBINDS);
+    return migrateKeybinds(readJsonFile(getKeybindsPath(), DEFAULT_KEYBINDS));
 }
 
 function setKeybinds(keybinds) {
