@@ -1,77 +1,118 @@
-## AI面试助手
+# AI面试助手
 
-This repository is an unofficial Chinese-localized and rebranded fork maintained by **L3n3L**, based on
-[sohzm/cheating-daddy](https://github.com/sohzm/cheating-daddy).
+面向中文面试、视频会议和实时沟通场景的 AI 助手。
 
-The distributed product name is **AI面试助手** and is not affiliated with or endorsed by the upstream project.
+它不是简单地把英文项目翻译成中文，而是围绕中文用户重新整理了模型接入、语音链路和桌面使用体验：你可以选择千问实时语音交流，也可以选择“本地语音转写 + DeepSeek 回复”的组合方案。
 
-Compared with upstream, this fork adds:
+> 本项目由 **L3n3L** 维护，是基于 [sohzm/cheating-daddy](https://github.com/sohzm/cheating-daddy) 的非官方中文本地化与再品牌化衍生项目，与上游项目没有隶属或背书关系。
 
-- Chinese interface and Chinese speech-language defaults.
-- DeepSeek API-key compatibility for text and screenshot replies.
-- Local audio and transport timing logs for diagnosing speech-to-answer latency.
-- Rebranded desktop application, installer metadata, and Chinese user interface.
+## 为什么值得试试
 
-The project remains licensed under **GPL-3.0**. See [NOTICE.md](NOTICE.md) for attribution and
-fork details. Never commit API keys or local session data.
+### 1. 千问实时语音交流
 
-A real-time AI assistant that provides contextual help during video calls, interviews, presentations, and meetings using screen capture and audio analysis.
+通过千问实时语音能力建立连续的语音会话，适合希望减少“录音 → 转写 → 再请求模型”中间环节的场景。
 
-## Features
+- 面向中文普通话交流进行配置
+- 支持连续收听和实时会话
+- 模型回答以文字呈现，方便快速浏览和复制
+- 适合中文面试、视频会议、汇报和现场问答
 
-- **DeepSeek mode**: Use DeepSeek for text and screenshot replies while keeping speech-to-text local with Whisper
-- **Screen & Audio Capture**: Analyzes what you see and hear for contextual responses
-- **Multiple Profiles**: Interview, Sales Call, Business Meeting, Presentation, Negotiation
-- **Transparent Overlay**: Always-on-top window that can be positioned anywhere
-- **Click-through Mode**: Make window transparent to clicks when needed
-- **Cross-platform**: Works on macOS, Windows, and Linux (kinda, dont use, just for testing rn)
+### 2. 本地模型转写 + DeepSeek 回复
 
-## Setup
+如果你更看重链路可控性，可以使用本地 Whisper 进行语音转写，再把转写文本交给 DeepSeek 生成回答：
 
-1. **Choose a provider**: DeepSeek or Local AI
-2. **Install Dependencies**: `npm install`
-3. **Run the App**: `npm start`
+```text
+麦克风 / 系统声音
+        ↓
+本地 Whisper 语音转写
+        ↓
+中文文本
+        ↓
+DeepSeek 生成回答
+        ↓
+桌面窗口显示文字
+```
 
-### DeepSeek mode
+语音转写阶段在本机完成，不需要把原始音频直接发送给 DeepSeek。这个组合对中文环境更友好，也方便分别调试转写质量、网络请求和模型回答速度。
 
-DeepSeek mode uses the OpenAI-compatible DeepSeek Chat Completions endpoint for text and image replies. It starts the local Whisper runner for audio transcription, then sends only the recognized text to DeepSeek. The default reply model is `deepseek-flash`.
+## 核心特色
 
-Enter the key in the app’s DeepSeek settings. API keys are stored in the local data directory and are not part of the source tree.
+- **中文优先**：中文界面、中文普通话默认配置和中文面试提示词
+- **两条可选链路**：千问实时语音交流，或本地 Whisper + DeepSeek 回复
+- **国内环境友好**：优先提供更适合中文用户使用习惯的模型和 API 配置方式
+- **本地语音能力**：支持本地 Whisper 转写，并优先使用 CUDA 后端（Windows 有可用 GPU 时）
+- **文字回答为主**：回答直接显示在桌面窗口中，便于快速阅读，不强制播放语音
+- **透明桌面窗口**：始终置顶，可调节位置，并支持鼠标穿透
+- **完整日志**：记录音频、转写、请求和回答各阶段耗时，方便定位延迟
+- **多种场景**：面试、销售沟通、商务会议、演示汇报、谈判和考试辅助
 
-### Local data location (Windows)
+## 快速开始
 
-On the original Windows setup, configuration, local-AI binaries, models, history, and logs are stored under
-the legacy-compatible directory:
+```bash
+npm install
+npm start
+```
 
-`E:\\vsws\\家庭工具\\cheating-daddy-data`
+启动后，在设置中选择使用方式并填写对应 API Key：
 
-To use a different location, set `CHEATING_DADDY_DATA_DIR` before starting the app. The legacy directory
-name is retained for compatibility with existing local keys, logs, history, and downloaded models.
+- **千问实时模式**：填写千问实时 API Key
+- **DeepSeek 模式**：使用本地 Whisper 转写，并填写 DeepSeek API Key
+- **本地 AI 模式**：按提示下载并配置本地模型
 
-## Usage
+首次使用建议先在设置中选择“中文普通话（中国）”，再选择音频模式。API Key 保存在本地配置目录，不会写入 Git 仓库。
 
-1. Enter your DeepSeek API key in the main window
-2. Choose your profile and language in settings
-3. Click "Start Session" to begin
-4. Position the window using keyboard shortcuts
-5. The AI will provide real-time assistance based on your screen and what interview asks
+## 两种工作模式
 
-## Keyboard Shortcuts
+### 千问实时模式
 
-- **Window Movement**: `Ctrl/Cmd + Arrow Keys` - Move window
-- **Click-through**: `Ctrl/Cmd + M` - Toggle mouse events
-- **Close/Back**: `Ctrl/Cmd + \` - Close window or go back
-- **Send Message**: `Enter` - Send text to AI
+```text
+音频输入 → 千问实时语音会话 → 文本回答 → AI面试助手窗口
+```
 
-## Audio Capture
+这条链路适合希望直接进行连续语音交流、减少中间转写步骤的用户。
 
-- **macOS**: [SystemAudioDump](https://github.com/Mohammed-Yasin-Mulla/Sound) for system audio
-- **Windows**: Loopback audio capture
-- **Linux**: Microphone input
+### DeepSeek 模式
 
-## Requirements
+```text
+音频输入 → 本地 Whisper → 中文转写文本 → DeepSeek → 文本回答
+```
 
-- Electron-compatible OS (macOS, Windows, Linux)
-- DeepSeek API key, when using online replies
-- Screen recording permissions
-- Microphone/audio permissions
+这条链路适合希望把语音识别留在本地，并使用 DeepSeek 进行中文回答的用户。截图分析和文字输入也可以继续使用 DeepSeek。
+
+## 使用方式
+
+1. 启动应用并填写对应模型的 API Key。
+2. 选择中文普通话、音频模式和使用场景。
+3. 点击“开始会话”。
+4. 根据需要开启屏幕分析或语音输入。
+5. AI 回答会显示在桌面窗口中。
+
+请遵守面试平台、会议软件和用人单位的相关规定，并将本项目用于获得允许的辅助、练习和研究场景。
+
+## 快捷键
+
+- **上一组 / 上一条回复**：`Ctrl/Cmd + 左箭头`
+- **下一组 / 下一条回复**：`Ctrl/Cmd + 右箭头`
+- **窗口上移 / 下移**：`Ctrl/Cmd + 上下箭头`
+- **窗口左移 / 右移**：`Ctrl/Cmd + Shift + 左右箭头`
+- **切换鼠标穿透**：`Ctrl/Cmd + M`
+- **隐藏 / 显示窗口**：Windows `Ctrl + \`，macOS `Cmd + \`
+- **发送文字消息**：`Enter`
+
+当回复数量达到 3 条以上时，界面会按每组 3 条进行翻页，左右快捷键每次切换一组。
+
+## Windows 本地数据位置
+
+默认情况下，Windows 的配置、模型、历史记录和日志保存在：
+
+```text
+E:\vsws\家庭工具\cheating-daddy-data
+```
+
+如需修改位置，可在启动前设置 `CHEATING_DADDY_DATA_DIR` 环境变量。API Key、日志和本地会话数据均不应提交到 Git 仓库。
+
+## 许可证与来源说明
+
+本项目使用 **GPL-3.0** 许可证。由于它基于上游项目进行修改和再发布，请阅读 [NOTICE.md](NOTICE.md) 了解来源、版权和衍生项目义务。
+
+本项目名称为 **AI面试助手**，不代表上游项目，也不使用上游项目的品牌背书。
