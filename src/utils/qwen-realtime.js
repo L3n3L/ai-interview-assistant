@@ -45,13 +45,25 @@ function resample24kTo16k(inputBuffer, remainder) {
 }
 
 class QwenRealtimeSession {
-    constructor({ apiKey, model = DEFAULT_MODEL, language = 'cmn-CN', instructions = '', endpoint, workspaceId, onEvent }) {
+    constructor({
+        apiKey,
+        model = DEFAULT_MODEL,
+        language = 'cmn-CN',
+        instructions = '',
+        endpoint,
+        workspaceId,
+        turnDetection = 'smart_turn',
+        maxHistoryTurns = 8,
+        onEvent,
+    }) {
         this.apiKey = String(apiKey || '').trim();
         this.model = model || DEFAULT_MODEL;
         this.language = normalizeLanguage(language);
         this.instructions = instructions || '';
         this.endpoint = endpoint || process.env.QWEN_REALTIME_ENDPOINT || DEFAULT_ENDPOINT;
         this.workspaceId = workspaceId || process.env.QWEN_WORKSPACE_ID || '';
+        this.turnDetection = turnDetection || 'smart_turn';
+        this.maxHistoryTurns = Number.isFinite(maxHistoryTurns) ? maxHistoryTurns : 8;
         this.url = buildRealtimeUrl(this.model, this.endpoint, this.workspaceId);
         this.onEvent = typeof onEvent === 'function' ? onEvent : () => {};
         this.socket = null;
@@ -68,7 +80,12 @@ class QwenRealtimeSession {
         this.closedByUser = false;
         this.state = 'connecting';
         const startedAt = Date.now();
-        logTransportEvent('qwen.session_connect_started', { model: this.model });
+        logTransportEvent('qwen.session_connect_started', {
+            model: this.model,
+            turnDetection: this.turnDetection,
+            maxHistoryTurns: this.maxHistoryTurns,
+            workspaceConfigured: Boolean(this.workspaceId),
+        });
 
         this.connectPromise = new Promise((resolve, reject) => {
             let settled = false;
@@ -101,9 +118,9 @@ class QwenRealtimeSession {
                         input_audio_transcription: {
                             language: this.language,
                         },
-                        max_history_turns: 8,
+                        max_history_turns: this.maxHistoryTurns,
                         turn_detection: {
-                            type: 'smart_turn',
+                            type: this.turnDetection,
                         },
                     },
                 });

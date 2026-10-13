@@ -10,6 +10,7 @@ const { QwenRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_REALTIME_MODEL } = requ
 
 const DEFAULT_QWEN_VISION_MODEL = 'qwen3-vl-plus';
 const DEFAULT_QWEN_VISION_ENDPOINT = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+const DEFAULT_QWEN_OMNI_REALTIME_MODEL = 'qwen3.8-omni-flash-realtime';
 
 // Lazy-loaded to avoid circular dependency (localai.js imports from gemini.js)
 let _localai = null;
@@ -18,7 +19,7 @@ function getLocalAi() {
     return _localai;
 }
 
-// Provider mode: 'byok', 'cloud', 'local', 'deepseek', or 'qwen-realtime'
+// Provider mode: legacy providers plus 'qwen-realtime' and 'qwen-omni-realtime'.
 let currentProviderMode = 'byok';
 
 // Groq conversation history for context
@@ -102,7 +103,10 @@ function handleQwenRealtimeEvent(event) {
             turnDetection: event.session?.turn_detection?.type || null,
             modalities: event.session?.modalities || [],
         });
-        sendToRenderer('update-status', 'Qwen 实时会话已连接');
+        sendToRenderer(
+            'update-status',
+            currentProviderMode === 'qwen-omni-realtime' ? 'Qwen Omni 实时会话已连接' : 'Qwen 实时会话已连接'
+        );
         return;
     }
 
@@ -253,6 +257,52 @@ async function initializeQwenRealtimeSession(
         closeQwenRealtimeSession();
         currentProviderMode = 'byok';
         sendToRenderer('update-status', 'Qwen 初始化失败：' + error.message);
+        return false;
+    }
+}
+
+async function initializeQwenOmniRealtimeSession(
+    apiKey,
+    model = DEFAULT_QWEN_OMNI_REALTIME_MODEL,
+    workspaceId = '',
+    customPrompt = '',
+    profile = 'interview',
+    language = 'cmn-CN'
+) {
+    if (!apiKey || !apiKey.trim()) return false;
+    if (!workspaceId || !String(workspaceId).trim()) {
+        sendToRenderer('update-status', 'Qwen Omni 初始化失败：缺少 Workspace ID');
+        return false;
+    }
+
+    closeQwenRealtimeSession();
+    currentProviderMode = 'qwen-omni-realtime';
+    currentQwenApiKey = apiKey.trim();
+    qwenCurrentUserTranscript = '';
+    qwenCurrentResponseText = '';
+    initializeNewSession(profile, customPrompt);
+
+    const session = new QwenRealtimeSession({
+        apiKey: apiKey.trim(),
+        model: model || DEFAULT_QWEN_OMNI_REALTIME_MODEL,
+        language,
+        workspaceId: String(workspaceId).trim(),
+        turnDetection: 'semantic_vad',
+        maxHistoryTurns: 20,
+        instructions: getQwenSystemPrompt(profile, customPrompt, language),
+        onEvent: handleQwenRealtimeEvent,
+    });
+    qwenRealtimeSession = session;
+
+    try {
+        await session.connect();
+        return true;
+    } catch (error) {
+        console.error('[QwenOmniRealtime] Initialization failed:', error.message);
+        logTransportEvent('qwen_omni.initialization_failed', { error: error.message });
+        closeQwenRealtimeSession();
+        currentProviderMode = 'byok';
+        sendToRenderer('update-status', 'Qwen Omni 初始化失败：' + error.message);
         return false;
     }
 }
@@ -1538,7 +1588,11 @@ async function startMacOSAudioCapture(geminiSessionRef) {
 
             const monoChunk = CHANNELS === 2 ? convertStereoToMono(chunk) : chunk;
 
-            if (currentProviderMode === 'cloud') {
+            if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
+                if (qwenRealtimeSession) {
+                    qwenRealtimeSession.sendAudio(monoChunk);
+                }
+            } else if (currentProviderMode === 'cloud') {
                 sendCloudAudio(monoChunk);
             } else if (currentProviderMode === 'local') {
                 getLocalAi().processLocalAudio(monoChunk);
@@ -1740,6 +1794,21 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
         }
     );
 
+    ipcMain.handle(
+        'initialize-qwen-omni-realtime',
+        async (
+            event,
+            apiKey,
+            model = DEFAULT_QWEN_OMNI_REALTIME_MODEL,
+            workspaceId = '',
+            customPrompt = '',
+            profile = 'interview',
+            language = 'cmn-CN'
+        ) => {
+            return initializeQwenOmniRealtimeSession(apiKey, model, workspaceId, customPrompt, profile, language);
+        }
+    );
+
     ipcMain.handle('cancel-qwen-response', async () => {
         try {
             if (!qwenRealtimeSession) return { success: false, error: '没有活动的 Qwen 会话' };
@@ -1768,7 +1837,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
     });
 
     ipcMain.handle('send-audio-content', async (event, { data, mimeType }) => {
-        if (currentProviderMode === 'qwen-realtime') {
+        if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
             try {
                 if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
                 const pcmBuffer = Buffer.from(data, 'base64');
@@ -1824,7 +1893,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     // Handle microphone audio on a separate channel
     ipcMain.handle('send-mic-audio-content', async (event, { data, mimeType }) => {
-        if (currentProviderMode === 'qwen-realtime') {
+        if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
             try {
                 if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
                 const pcmBuffer = Buffer.from(data, 'base64');
@@ -1911,7 +1980,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 return await sendImageToDeepSeek(data, prompt);
             }
 
-            if (currentProviderMode === 'qwen-realtime') {
+            if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
                 return await sendImageToQwenVision(data, prompt);
             }
 
@@ -1956,7 +2025,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 : { success: false, error: 'DeepSeek returned no response' };
         }
 
-        if (currentProviderMode === 'qwen-realtime') {
+        if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
             try {
                 if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
                 qwenCurrentUserTranscript = text.trim();
@@ -2017,7 +2086,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
         try {
             stopMacOSAudioCapture();
 
-            if (currentProviderMode === 'qwen-realtime') {
+            if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
                 closeQwenRealtimeSession();
                 currentProviderMode = 'byok';
                 closeTransportLog();
@@ -2116,5 +2185,6 @@ module.exports = {
     setupGeminiIpcHandlers,
     formatSpeakerResults,
     initializeQwenRealtimeSession,
+    initializeQwenOmniRealtimeSession,
     closeQwenRealtimeSession,
 };

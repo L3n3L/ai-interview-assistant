@@ -16,6 +16,7 @@ function translateStatus(text) {
         'Local AI Live': '本地 AI 已连接',
         'DeepSeek Live': 'DeepSeek 已连接',
         'Qwen 实时已连接': 'Qwen 实时已连接',
+        'Qwen Omni 实时已连接': 'Qwen Omni 实时已连接',
         'Live session connected': '实时会话已连接',
         'Session closed': '会话已关闭',
         'Listening...': '正在聆听…',
@@ -642,7 +643,13 @@ export class CheatingDaddyApp extends LitElement {
 
     async handleStart() {
         const prefs = await cheatingDaddy.storage.getPreferences();
-        const providerMode = prefs.providerMode === 'cloud' ? 'byok' : prefs.providerMode || 'byok';
+        const storedMode = prefs.providerMode || 'qwen-omni-realtime';
+        const supportedModes = new Set(['byok', 'cloud', 'local', 'deepseek', 'qwen-realtime', 'qwen-omni-realtime']);
+        const providerMode = supportedModes.has(storedMode) ? storedMode : 'qwen-omni-realtime';
+
+        if (providerMode !== storedMode) {
+            await cheatingDaddy.storage.updatePreference('providerMode', providerMode);
+        }
 
         if (providerMode === 'cloud') {
             const creds = await cheatingDaddy.storage.getCredentials();
@@ -673,6 +680,15 @@ export class CheatingDaddyApp extends LitElement {
             }
         } else if (providerMode === 'qwen-realtime') {
             const success = await cheatingDaddy.initializeQwenRealtime(this.selectedProfile, this.selectedLanguage);
+            if (!success) {
+                const mainView = this.shadowRoot.querySelector('main-view');
+                if (mainView && mainView.triggerApiKeyError) {
+                    mainView.triggerApiKeyError();
+                }
+                return;
+            }
+        } else if (providerMode === 'qwen-omni-realtime') {
+            const success = await cheatingDaddy.initializeQwenOmniRealtime(this.selectedProfile, this.selectedLanguage);
             if (!success) {
                 const mainView = this.shadowRoot.querySelector('main-view');
                 if (mainView && mainView.triggerApiKeyError) {

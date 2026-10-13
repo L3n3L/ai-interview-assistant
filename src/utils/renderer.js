@@ -233,6 +233,36 @@ async function initializeQwenRealtime(profile = 'interview', language = 'cmn-CN'
     return false;
 }
 
+async function initializeQwenOmniRealtime(profile = 'interview', language = 'cmn-CN') {
+    const apiKey = await storage.getQwenRealtimeApiKey();
+    const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
+    const model = config.qwenOmniRealtimeModel || 'qwen3.8-omni-flash-realtime';
+    const workspaceId = String(config.qwenWorkspaceId || '').trim();
+
+    if (!apiKey || !apiKey.trim() || !workspaceId) {
+        cheatingDaddy.setStatus('error');
+        return false;
+    }
+
+    const success = await ipcRenderer.invoke(
+        'initialize-qwen-omni-realtime',
+        apiKey,
+        model,
+        workspaceId,
+        prefs.customPrompt || '',
+        profile,
+        language
+    );
+
+    if (success) {
+        cheatingDaddy.setStatus('Qwen Omni 实时已连接');
+        return true;
+    }
+
+    cheatingDaddy.setStatus('error');
+    return false;
+}
+
 async function cancelLocalInitialization() {
     return ipcRenderer.invoke('cancel-local-initialization');
 }
@@ -729,7 +759,9 @@ async function captureManualScreenshot(imageQuality = null) {
     }
 
     // Qwen 视觉模式优先保证代码可读性；其它模式保留原有传输尺寸。
-    const MAX_WIDTH = preferencesCache?.providerMode === 'qwen-realtime' ? 1920 : 1280;
+    const isQwenRealtimeMode =
+        preferencesCache?.providerMode === 'qwen-realtime' || preferencesCache?.providerMode === 'qwen-omni-realtime';
+    const MAX_WIDTH = isQwenRealtimeMode ? 1920 : 1280;
     const srcW = hiddenVideo.videoWidth;
     const srcH = hiddenVideo.videoHeight;
     let destW = srcW;
@@ -745,10 +777,10 @@ async function captureManualScreenshot(imageQuality = null) {
     let qualityValue;
     switch (quality) {
         case 'high':
-            qualityValue = preferencesCache?.providerMode === 'qwen-realtime' ? 0.92 : 0.85;
+            qualityValue = isQwenRealtimeMode ? 0.92 : 0.85;
             break;
         case 'medium':
-            qualityValue = preferencesCache?.providerMode === 'qwen-realtime' ? 0.78 : 0.6;
+            qualityValue = isQwenRealtimeMode ? 0.78 : 0.6;
             break;
         case 'low':
             qualityValue = 0.4;
@@ -1226,6 +1258,7 @@ const cheatingDaddy = {
     initializeLocal,
     initializeDeepSeek,
     initializeQwenRealtime,
+    initializeQwenOmniRealtime,
     cancelLocalInitialization,
     startCapture,
     stopCapture,

@@ -12,6 +12,8 @@ const DEFAULT_CONFIG = {
     geminiLiveModel: 'gemini-3.1-flash-live-preview',
     deepseekModel: 'deepseek-flash',
     qwenRealtimeModel: 'qwen-audio-3.1-realtime-plus',
+    qwenOmniRealtimeModel: 'qwen3.8-omni-flash-realtime',
+    qwenWorkspaceId: '',
     qwenVisionModel: 'qwen3-vl-plus',
     groqModel: 'qwen/qwen3.6-27b',
     groqImageModel: 'qwen/qwen3.6-27b',
@@ -27,7 +29,7 @@ const DEFAULT_CREDENTIALS = {
 
 const DEFAULT_PREFERENCES = {
     customPrompt: '',
-    providerMode: 'byok',
+    providerMode: 'qwen-omni-realtime',
     selectedProfile: 'interview',
     selectedLanguage: 'cmn-CN',
     selectedScreenshotInterval: '5',
