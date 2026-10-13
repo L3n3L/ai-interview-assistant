@@ -1321,8 +1321,8 @@ export class MainView extends LitElement {
             <!-- Cloud promo intentionally removed from the active UI. -->
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 Qwen Omni 实时</button>
-                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 Qwen 实时语音</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 qwen3.8-omni-flash-realtime（稍微慢一点，但更聪明）</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 qwen-audio-3.1-realtime-plus（更快，但质量稍低）</button>
                 <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
             </div>
         `;
@@ -1335,8 +1335,8 @@ export class MainView extends LitElement {
             <details class="config-section" open>
                 <summary class="config-summary">
                     <span class="config-summary-text">
-                        <span class="config-summary-title">Qwen 实时语音</span>
-                        <span class="config-summary-description">官方实时语音理解 + 纯文本回答</span>
+                        <span class="config-summary-title">qwen-audio-3.1-realtime-plus</span>
+                        <span class="config-summary-description">更快，但质量稍低；官方实时语音理解 + 纯文本回答</span>
                     </span>
                     ${this._renderConfigChevron()}
                 </summary>
@@ -1358,7 +1358,7 @@ export class MainView extends LitElement {
                     <div class="form-group">
                         <label class="form-label">实时模型</label>
                         <input type="text" .value=${this._qwenModel} @input=${e => this._saveQwenModel(e.target.value)} />
-                        <div class="form-hint">默认使用 qwen-audio-3.1-realtime-plus；输入音频由官方实时接口转写，回答只返回文本。</div>
+                        <div class="form-hint">更快，但质量稍低。输入音频由官方实时接口转写，回答只返回文本。</div>
                     </div>
 
                     <div class="form-group">
@@ -1372,7 +1372,7 @@ export class MainView extends LitElement {
             ${this._renderStartButton()} ${this._renderDivider()}
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 Qwen Omni 实时</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 qwen3.8-omni-flash-realtime（稍微慢一点，但更聪明）</button>
                 <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
             </div>
         `;
@@ -1385,8 +1385,8 @@ export class MainView extends LitElement {
             <details class="config-section" open>
                 <summary class="config-summary">
                     <span class="config-summary-text">
-                        <span class="config-summary-title">Qwen Omni 实时</span>
-                        <span class="config-summary-description">实时音频理解 + 高质量文本回答</span>
+                        <span class="config-summary-title">qwen3.8-omni-flash-realtime</span>
+                        <span class="config-summary-description">稍微慢一点，但更聪明；实时音频理解 + 高质量文本回答</span>
                     </span>
                     ${this._renderConfigChevron()}
                 </summary>
@@ -1420,7 +1420,7 @@ export class MainView extends LitElement {
                     <div class="form-group">
                         <label class="form-label">实时模型</label>
                         <input type="text" .value=${this._qwenOmniModel} @input=${e => this._saveQwenOmniModel(e.target.value)} />
-                        <div class="form-hint">默认使用 qwen3.8-omni-flash-realtime；语音由官方实时模型理解，回答只返回文本。</div>
+                        <div class="form-hint">稍微慢一点，但更聪明。语音由官方实时模型理解，回答只返回文本。</div>
                     </div>
 
                     <div class="form-group">
@@ -1434,7 +1434,7 @@ export class MainView extends LitElement {
             ${this._renderStartButton()} ${this._renderDivider()}
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用旧版 Qwen 实时语音</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 qwen-audio-3.1-realtime-plus（更快，但质量稍低）</button>
                 <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
             </div>
         `;
@@ -1486,8 +1486,8 @@ export class MainView extends LitElement {
             ${this._renderStartButton()} ${this._renderDivider()}
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 Qwen Omni 实时</button>
-                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 Qwen 实时语音</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 qwen3.8-omni-flash-realtime（稍微慢一点，但更聪明）</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 qwen-audio-3.1-realtime-plus（更快，但质量稍低）</button>
             </div>
         `;
     }
@@ -1558,8 +1558,8 @@ export class MainView extends LitElement {
             <!-- Cloud promo intentionally removed from the active UI. -->
 
             <div class="mode-links">
-                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 Qwen Omni 实时</button>
-                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 Qwen 实时语音</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-omni-realtime')}>使用 qwen3.8-omni-flash-realtime（稍微慢一点，但更聪明）</button>
+                <button class="mode-link" @click=${() => this._saveMode('qwen-realtime')}>使用 qwen-audio-3.1-realtime-plus（更快，但质量稍低）</button>
                 <button class="mode-link" @click=${() => this._saveMode('deepseek')}>使用 DeepSeek Flash</button>
             </div>
         `;
@@ -1590,9 +1590,9 @@ export class MainView extends LitElement {
                                           >${this._mode === 'deepseek'
                                               ? 'DeepSeek'
                                               : this._mode === 'qwen-omni-realtime'
-                                                ? 'Qwen Omni 实时'
+                                                ? 'qwen3.8-omni-flash-realtime'
                                                 : this._mode === 'qwen-realtime'
-                                                  ? 'Qwen 实时'
+                                                  ? 'qwen-audio-3.1-realtime-plus'
                                                   : '本地 AI'}</span
                                       >
                                   </div>
@@ -1608,9 +1608,9 @@ export class MainView extends LitElement {
                             : this._mode === 'deepseek'
                               ? 'DeepSeek 负责回复，本地负责语音转写'
                               : this._mode === 'qwen-omni-realtime'
-                                ? 'Qwen Omni 负责实时音频理解和文本回答'
+                                ? 'qwen3.8-omni-flash-realtime：稍微慢一点，但更聪明'
                                 : this._mode === 'qwen-realtime'
-                                  ? 'Qwen 负责实时语音理解和文本回答'
+                                  ? 'qwen-audio-3.1-realtime-plus：更快，但质量稍低'
                                   : '在本机运行模型'
                     }
                 </div>

@@ -214,7 +214,7 @@ class QwenRealtimeSession {
         this.socket.send(JSON.stringify(event));
     }
 
-    sendAudio(pcm24kBuffer) {
+    sendAudio(pcm24kBuffer, source = 'unknown') {
         if (!Buffer.isBuffer(pcm24kBuffer) || pcm24kBuffer.length === 0) return false;
         const result = resample24kTo16k(pcm24kBuffer, this.resampleRemainder);
         this.resampleRemainder = result.remainder;
@@ -225,6 +225,7 @@ class QwenRealtimeSession {
             audio: result.buffer.toString('base64'),
         });
         logTransportEvent('qwen.audio_sent', {
+            source,
             inputBytes: pcm24kBuffer.length,
             outputBytes: result.buffer.length,
         });

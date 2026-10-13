@@ -301,7 +301,9 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
     const audioMode = preferencesCache.audioMode || 'speaker_only';
     // Qwen recommends frequent 20–40 ms frames. Keep the legacy 100 ms
     // cadence for the existing providers so their VAD behavior is unchanged.
-    activeAudioChunkDuration = preferencesCache.providerMode === 'qwen-realtime' ? 0.04 : AUDIO_CHUNK_DURATION;
+    activeAudioChunkDuration = (preferencesCache.providerMode === 'qwen-realtime' || preferencesCache.providerMode === 'qwen-omni-realtime')
+        ? 0.04
+        : AUDIO_CHUNK_DURATION;
 
     try {
         if (isMacOS) {
@@ -409,20 +411,24 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
 
             console.log('Linux capture started - system audio:', mediaStream.getAudioTracks().length > 0, 'microphone mode:', audioMode);
         } else {
-            // Windows - use display media with loopback for system audio
+            // Windows - always capture the screen, but only request/process system
+            // audio when the selected mode needs it. In mic_only mode, requesting
+            // display audio creates a silent loopback source and obscures whether
+            // microphone frames are actually reaching the realtime session.
+            const captureSystemAudio = audioMode === 'speaker_only' || audioMode === 'both';
             mediaStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
                     frameRate: 1,
                     width: { ideal: 1920 },
                     height: { ideal: 1080 },
                 },
-                audio: {
+                audio: captureSystemAudio ? {
                     sampleRate: SAMPLE_RATE,
                     channelCount: 1,
                     echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
-                },
+                } : false,
             });
 
             const audioTracks = mediaStream.getAudioTracks();
@@ -443,7 +449,7 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 })),
             });
 
-            if (audioTracks.length === 0) {
+            if (captureSystemAudio && audioTracks.length === 0) {
                 reportAudioDiagnostic('no_system_audio_track', {
                     platform: 'win32',
                     audioMode,
@@ -451,10 +457,17 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 });
             }
 
-            console.log('Windows capture started with loopback audio');
-
-            // Setup audio processing for Windows loopback audio only
-            setupWindowsLoopbackProcessing();
+            if (captureSystemAudio && audioTracks.length > 0) {
+                console.log('Windows capture started with loopback audio');
+                setupWindowsLoopbackProcessing();
+            } else {
+                console.log('Windows capture started without system audio; microphone-only mode');
+                reportAudioDiagnostic('system_audio_disabled', {
+                    platform: 'win32',
+                    audioMode,
+                    reason: 'microphone_only',
+                });
+            }
 
             if (audioMode === 'mic_only' || audioMode === 'both') {
                 let micStream = null;
@@ -469,10 +482,30 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                         },
                         video: false,
                     });
-                    console.log('Windows microphone capture started');
+                    const microphoneTracks = micStream.getAudioTracks();
+                    console.log('Windows microphone capture started', microphoneTracks.map(track => track.getSettings()));
+                    reportAudioDiagnostic('microphone_capture_started', {
+                        platform: 'win32',
+                        audioMode,
+                        audioTrackCount: microphoneTracks.length,
+                        audioTracks: microphoneTracks.map(track => ({
+                            label: track.label,
+                            readyState: track.readyState,
+                            muted: track.muted,
+                            settings: {
+                                channelCount: track.getSettings().channelCount,
+                                sampleRate: track.getSettings().sampleRate,
+                            },
+                        })),
+                    });
                     setupLinuxMicProcessing(micStream);
                 } catch (micError) {
                     console.warn('Failed to get microphone access on Windows:', micError);
+                    reportAudioDiagnostic('microphone_capture_failed', {
+                        platform: 'win32',
+                        audioMode,
+                        error: micError?.message || String(micError),
+                    });
                 }
             }
         }
@@ -492,17 +525,50 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
 }
 
 function setupLinuxMicProcessing(micStream) {
-    // Setup microphone audio processing for Linux
+    // Shared microphone processing for Linux, macOS, and Windows.
     const micAudioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
     const micSource = micAudioContext.createMediaStreamSource(micStream);
     const micProcessor = micAudioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
 
     let audioBuffer = [];
     const samplesPerChunk = SAMPLE_RATE * activeAudioChunkDuration;
+    let diagnosticSamples = 0;
+    let diagnosticSumSquares = 0;
+    let diagnosticPeak = 0;
+    let diagnosticChunks = 0;
+    let diagnosticSentChunks = 0;
+    let diagnosticStartedAt = performance.now();
+
+    reportAudioDiagnostic('microphone_processing_started', {
+        audioContextState: micAudioContext.state,
+        audioContextSampleRate: micAudioContext.sampleRate,
+        chunkDurationMs: activeAudioChunkDuration * 1000,
+        chunkSamples: samplesPerChunk,
+        trackCount: micStream.getAudioTracks().length,
+    });
+
+    if (micAudioContext.state !== 'running') {
+        micAudioContext.resume().then(() => {
+            reportAudioDiagnostic('microphone_audio_context_resumed', {
+                audioContextState: micAudioContext.state,
+            });
+        }).catch(error => {
+            reportAudioDiagnostic('microphone_audio_context_resume_failed', {
+                error: error.message,
+            });
+        });
+    }
 
     micProcessor.onaudioprocess = async e => {
         const inputData = e.inputBuffer.getChannelData(0);
         audioBuffer.push(...inputData);
+
+        for (const sample of inputData) {
+            diagnosticSamples += 1;
+            diagnosticSumSquares += sample * sample;
+            diagnosticPeak = Math.max(diagnosticPeak, Math.abs(sample));
+        }
+        diagnosticChunks += 1;
 
         // Process audio in chunks
         while (audioBuffer.length >= samplesPerChunk) {
@@ -514,6 +580,25 @@ function setupLinuxMicProcessing(micStream) {
                 data: base64Data,
                 mimeType: 'audio/pcm;rate=24000',
             });
+            diagnosticSentChunks += 1;
+        }
+
+        const now = performance.now();
+        if (now - diagnosticStartedAt >= 1000) {
+            reportAudioDiagnostic('microphone_level', {
+                audioContextState: micAudioContext.state,
+                chunks: diagnosticChunks,
+                sentChunks: diagnosticSentChunks,
+                samples: diagnosticSamples,
+                rms: Math.sqrt(diagnosticSumSquares / Math.max(1, diagnosticSamples)),
+                peak: diagnosticPeak,
+            });
+            diagnosticSamples = 0;
+            diagnosticSumSquares = 0;
+            diagnosticPeak = 0;
+            diagnosticChunks = 0;
+            diagnosticSentChunks = 0;
+            diagnosticStartedAt = now;
         }
     };
 

@@ -7,11 +7,10 @@ const { getAvailableModel, incrementLimitCount, getApiKey, getGroqApiKey, getDee
 const { connectCloud, sendCloudAudio, sendCloudText, sendCloudImage, closeCloud, isCloudActive, setOnTurnComplete } = require('./cloud');
 const { startTransportLog, logTransportEvent, closeTransportLog } = require('./transportLogger');
 const { QwenRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_REALTIME_MODEL } = require('./qwen-realtime');
+const { QwenOmniRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_OMNI_REALTIME_MODEL } = require('./qwen-omni-realtime');
 
 const DEFAULT_QWEN_VISION_MODEL = 'qwen3-vl-plus';
 const DEFAULT_QWEN_VISION_ENDPOINT = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-const DEFAULT_QWEN_OMNI_REALTIME_MODEL = 'qwen3.8-omni-flash-realtime';
-
 // Lazy-loaded to avoid circular dependency (localai.js imports from gemini.js)
 let _localai = null;
 function getLocalAi() {
@@ -39,6 +38,7 @@ let currentCustomPrompt = null;
 let isInitializingSession = false;
 let currentSystemPrompt = null;
 let qwenRealtimeSession = null;
+let qwenOmniRealtimeSession = null;
 let qwenCurrentUserTranscript = '';
 let qwenCurrentResponseText = '';
 let qwenCurrentResponseId = null;
@@ -91,14 +91,15 @@ function getQwenSystemPrompt(profile, customPrompt, language) {
 
 function handleQwenRealtimeEvent(event) {
     const type = event?.type;
+    const eventPrefix = currentProviderMode === 'qwen-omni-realtime' ? 'qwen_omni' : 'qwen';
 
     if (type === 'session.created') {
-        logTransportEvent('qwen.session_created', { sessionId: event.session?.id || null });
+        logTransportEvent(`${eventPrefix}.session_created`, { sessionId: event.session?.id || null });
         return;
     }
 
     if (type === 'session.updated') {
-        logTransportEvent('qwen.session_updated', {
+        logTransportEvent(`${eventPrefix}.session_updated`, {
             model: event.session?.model || null,
             turnDetection: event.session?.turn_detection?.type || null,
             modalities: event.session?.modalities || [],
@@ -112,13 +113,13 @@ function handleQwenRealtimeEvent(event) {
 
     if (type === 'input_audio_buffer.speech_started') {
         qwenCurrentUserTranscript = '';
-        logTransportEvent('qwen.speech_started', { itemId: event.item_id || null });
+        logTransportEvent(`${eventPrefix}.speech_started`, { itemId: event.item_id || null });
         sendToRenderer('update-status', '正在聆听…');
         return;
     }
 
     if (type === 'input_audio_buffer.speech_stopped') {
-        logTransportEvent('qwen.speech_stopped', {
+        logTransportEvent(`${eventPrefix}.speech_stopped`, {
             itemId: event.item_id || null,
             reason: event.reason || 'valid_turn',
             audioEndMs: event.audio_end_ms ?? null,
@@ -135,7 +136,7 @@ function handleQwenRealtimeEvent(event) {
 
     if (type === 'conversation.item.input_audio_transcription.completed') {
         qwenCurrentUserTranscript = String(event.transcript || qwenCurrentUserTranscript).trim();
-        logTransportEvent('qwen.transcription_completed', {
+        logTransportEvent(`${eventPrefix}.transcription_completed`, {
             itemId: event.item_id || null,
             transcriptChars: qwenCurrentUserTranscript.length,
         });
@@ -143,7 +144,7 @@ function handleQwenRealtimeEvent(event) {
     }
 
     if (type === 'conversation.item.input_audio_transcription.failed') {
-        logTransportEvent('qwen.transcription_failed', {
+        logTransportEvent(`${eventPrefix}.transcription_failed`, {
             itemId: event.item_id || null,
             error: event.error?.message || 'unknown',
         });
@@ -155,24 +156,24 @@ function handleQwenRealtimeEvent(event) {
         qwenCurrentResponseText = '';
         qwenFirstTokenAt = null;
         qwenResponseStartedAt = Date.now();
-        logTransportEvent('qwen.response_started', { responseId: qwenCurrentResponseId });
+        logTransportEvent(`${eventPrefix}.response_started`, { responseId: qwenCurrentResponseId });
         sendToRenderer('new-response', '');
         sendToRenderer('update-status', '正在生成回答…');
         return;
     }
 
-    if (type === 'response.text.delta') {
+    if (type === 'response.text.delta' || type === 'response.audio_transcript.delta') {
         if (qwenFirstTokenAt === null) {
             qwenFirstTokenAt = Date.now();
-            logTransportEvent('qwen.first_text_received', { responseId: qwenCurrentResponseId });
+            logTransportEvent(`${eventPrefix}.first_text_received`, { responseId: qwenCurrentResponseId });
         }
         qwenCurrentResponseText += event.delta || '';
         sendToRenderer('update-response', qwenCurrentResponseText);
         return;
     }
 
-    if (type === 'response.text.done') {
-        qwenCurrentResponseText = String(event.text || qwenCurrentResponseText);
+    if (type === 'response.text.done' || type === 'response.audio_transcript.done') {
+        qwenCurrentResponseText = String(event.text || event.transcript || qwenCurrentResponseText);
         sendToRenderer('update-response', qwenCurrentResponseText);
         return;
     }
@@ -180,7 +181,7 @@ function handleQwenRealtimeEvent(event) {
     if (type === 'response.done') {
         const status = event.response?.status || 'completed';
         const responseId = event.response?.id || qwenCurrentResponseId;
-        logTransportEvent('qwen.response_completed', {
+        logTransportEvent(`${eventPrefix}.response_completed`, {
             responseId,
             status,
             transcriptChars: qwenCurrentUserTranscript.length,
@@ -206,7 +207,7 @@ function handleQwenRealtimeEvent(event) {
 
     if (type === 'error') {
         const message = event.error?.message || 'Qwen 实时接口返回未知错误';
-        logTransportEvent('qwen.api_error', {
+        logTransportEvent(`${eventPrefix}.api_error`, {
             errorType: event.error?.type || null,
             code: event.error?.code || null,
             message,
@@ -282,17 +283,15 @@ async function initializeQwenOmniRealtimeSession(
     qwenCurrentResponseText = '';
     initializeNewSession(profile, customPrompt);
 
-    const session = new QwenRealtimeSession({
+    const session = new QwenOmniRealtimeSession({
         apiKey: apiKey.trim(),
         model: model || DEFAULT_QWEN_OMNI_REALTIME_MODEL,
-        language,
         workspaceId: String(workspaceId).trim(),
         turnDetection: 'semantic_vad',
-        maxHistoryTurns: 20,
         instructions: getQwenSystemPrompt(profile, customPrompt, language),
         onEvent: handleQwenRealtimeEvent,
     });
-    qwenRealtimeSession = session;
+    qwenOmniRealtimeSession = session;
 
     try {
         await session.connect();
@@ -311,6 +310,10 @@ function closeQwenRealtimeSession() {
     if (qwenRealtimeSession) {
         qwenRealtimeSession.close();
         qwenRealtimeSession = null;
+    }
+    if (qwenOmniRealtimeSession) {
+        qwenOmniRealtimeSession.close();
+        qwenOmniRealtimeSession = null;
     }
     qwenCurrentUserTranscript = '';
     qwenCurrentResponseText = '';
@@ -1589,8 +1592,9 @@ async function startMacOSAudioCapture(geminiSessionRef) {
             const monoChunk = CHANNELS === 2 ? convertStereoToMono(chunk) : chunk;
 
             if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
-                if (qwenRealtimeSession) {
-                    qwenRealtimeSession.sendAudio(monoChunk);
+                const activeQwenSession = currentProviderMode === 'qwen-omni-realtime' ? qwenOmniRealtimeSession : qwenRealtimeSession;
+                if (activeQwenSession) {
+                    activeQwenSession.sendAudio(monoChunk, 'system');
                 }
             } else if (currentProviderMode === 'cloud') {
                 sendCloudAudio(monoChunk);
@@ -1811,8 +1815,9 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     ipcMain.handle('cancel-qwen-response', async () => {
         try {
-            if (!qwenRealtimeSession) return { success: false, error: '没有活动的 Qwen 会话' };
-            return { success: qwenRealtimeSession.cancelResponse() };
+            const activeQwenSession = currentProviderMode === 'qwen-omni-realtime' ? qwenOmniRealtimeSession : qwenRealtimeSession;
+            if (!activeQwenSession) return { success: false, error: '没有活动的 Qwen 会话' };
+            return { success: activeQwenSession.cancelResponse() };
         } catch (error) {
             console.error('Error cancelling Qwen response:', error);
             return { success: false, error: error.message };
@@ -1839,9 +1844,10 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
     ipcMain.handle('send-audio-content', async (event, { data, mimeType }) => {
         if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
             try {
-                if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
+                const activeQwenSession = currentProviderMode === 'qwen-omni-realtime' ? qwenOmniRealtimeSession : qwenRealtimeSession;
+                if (!activeQwenSession) return { success: false, error: 'No active Qwen realtime session' };
                 const pcmBuffer = Buffer.from(data, 'base64');
-                qwenRealtimeSession.sendAudio(pcmBuffer);
+                activeQwenSession.sendAudio(pcmBuffer, 'system');
                 return { success: true };
             } catch (error) {
                 console.error('Error sending Qwen system audio:', error);
@@ -1895,9 +1901,10 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
     ipcMain.handle('send-mic-audio-content', async (event, { data, mimeType }) => {
         if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
             try {
-                if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
+                const activeQwenSession = currentProviderMode === 'qwen-omni-realtime' ? qwenOmniRealtimeSession : qwenRealtimeSession;
+                if (!activeQwenSession) return { success: false, error: 'No active Qwen realtime session' };
                 const pcmBuffer = Buffer.from(data, 'base64');
-                qwenRealtimeSession.sendAudio(pcmBuffer);
+                activeQwenSession.sendAudio(pcmBuffer, 'microphone');
                 return { success: true };
             } catch (error) {
                 console.error('Error sending Qwen microphone audio:', error);
@@ -2027,9 +2034,10 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
         if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
             try {
-                if (!qwenRealtimeSession) return { success: false, error: 'No active Qwen realtime session' };
+                const activeQwenSession = currentProviderMode === 'qwen-omni-realtime' ? qwenOmniRealtimeSession : qwenRealtimeSession;
+                if (!activeQwenSession) return { success: false, error: 'No active Qwen realtime session' };
                 qwenCurrentUserTranscript = text.trim();
-                qwenRealtimeSession.sendTextMessage(text.trim());
+                activeQwenSession.sendTextMessage(text.trim());
                 return { success: true };
             } catch (error) {
                 console.error('Error sending Qwen text:', error);
