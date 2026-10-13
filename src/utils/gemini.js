@@ -8,6 +8,9 @@ const { connectCloud, sendCloudAudio, sendCloudText, sendCloudImage, closeCloud,
 const { startTransportLog, logTransportEvent, closeTransportLog } = require('./transportLogger');
 const { QwenRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_REALTIME_MODEL } = require('./qwen-realtime');
 
+const DEFAULT_QWEN_VISION_MODEL = 'qwen3-vl-plus';
+const DEFAULT_QWEN_VISION_ENDPOINT = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+
 // Lazy-loaded to avoid circular dependency (localai.js imports from gemini.js)
 let _localai = null;
 function getLocalAi() {
@@ -23,6 +26,7 @@ let groqConversationHistory = [];
 let deepseekConversationHistory = [];
 let currentDeepSeekApiKey = '';
 let currentDeepSeekModel = 'deepseek-flash';
+let currentQwenApiKey = '';
 
 // Conversation tracking variables
 let currentSessionId = null;
@@ -226,6 +230,7 @@ async function initializeQwenRealtimeSession(
 
     closeQwenRealtimeSession();
     currentProviderMode = 'qwen-realtime';
+    currentQwenApiKey = apiKey.trim();
     qwenCurrentUserTranscript = '';
     qwenCurrentResponseText = '';
     initializeNewSession(profile, customPrompt);
@@ -261,6 +266,7 @@ function closeQwenRealtimeSession() {
     qwenCurrentResponseText = '';
     qwenCurrentResponseId = null;
     qwenResponseStartedAt = null;
+    currentQwenApiKey = '';
 }
 
 // Build context message for session restoration
@@ -453,6 +459,210 @@ async function readDeepSeekStream(response, onText) {
 
     if (pending) consumeLine(pending);
     return fullText;
+}
+
+function normalizeQwenVisionText(value) {
+    if (typeof value === 'string') return value;
+    if (!Array.isArray(value)) return '';
+
+    return value
+        .map(part => {
+            if (typeof part === 'string') return part;
+            return typeof part?.text === 'string' ? part.text : '';
+        })
+        .join('');
+}
+
+async function readQwenVisionStream(response, onText, onReasoning) {
+    if (!response.body) {
+        const payload = await response.json();
+        const message = payload.choices?.[0]?.message || {};
+        const text = normalizeQwenVisionText(message.content);
+        const reasoning = normalizeQwenVisionText(message.reasoning_content);
+        if (reasoning) onReasoning(reasoning);
+        if (text) onText(text);
+        return { text, reasoningChars: reasoning.length };
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let pending = '';
+    let fullText = '';
+    let reasoningChars = 0;
+
+    const consumeLine = line => {
+        if (!line.startsWith('data:')) return;
+        const data = line.slice(5).trim();
+        if (!data || data === '[DONE]') return;
+
+        try {
+            const event = JSON.parse(data);
+            const delta = event.choices?.[0]?.delta || {};
+            const reasoning = normalizeQwenVisionText(delta.reasoning_content);
+            const token = normalizeQwenVisionText(delta.content);
+
+            if (reasoning) {
+                reasoningChars += reasoning.length;
+                onReasoning(reasoning);
+            }
+
+            if (token) {
+                fullText += token;
+                onText(fullText);
+            }
+        } catch (error) {
+            logTransportEvent('qwen.vision.stream_parse_error', { error: error.message });
+        }
+    };
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        pending += decoder.decode(value, { stream: true });
+        const lines = pending.split(/\r?\n/);
+        pending = lines.pop() || '';
+        lines.forEach(consumeLine);
+    }
+
+    if (pending) consumeLine(pending);
+    return { text: fullText, reasoningChars };
+}
+
+const DEFAULT_QWEN_VISION_PROMPT = `
+你是中文算法面试助手，请分析这张截图中的题目、代码或报错信息。
+
+请优先回答：
+1. 题目要求以及输入输出含义
+2. 核心算法思路
+3. 代码关键逻辑或修正方案
+4. 边界情况
+5. 时间复杂度和空间复杂度
+6. 一段可以直接在面试中口述的简洁答案
+
+如果截图中的代码或文字看不清，不要自行猜测，请明确指出需要重新截取的区域。
+请使用简体中文，直接给出有用答案，不要描述你正在进行图片识别。
+`.trim();
+
+async function sendImageToQwenVision(base64Data, prompt) {
+    const apiKey = currentQwenApiKey.trim();
+    if (!apiKey) {
+        return { success: false, error: '没有配置 Qwen API 密钥' };
+    }
+
+    const config = getConfig();
+    const model = config.qwenVisionModel || DEFAULT_QWEN_VISION_MODEL;
+    const endpoint = process.env.QWEN_VISION_ENDPOINT || DEFAULT_QWEN_VISION_ENDPOINT;
+    const imageBytes = Buffer.byteLength(base64Data, 'base64');
+    const startedAt = Date.now();
+    let firstTokenAt = null;
+    let reasoningChars = 0;
+    let hasDisplayedResponse = false;
+
+    const visionPrompt = [
+        DEFAULT_QWEN_VISION_PROMPT,
+        prompt?.trim() || '',
+        currentCustomPrompt?.trim() ? `用户补充要求：\n${currentCustomPrompt.trim()}` : '',
+    ]
+        .filter(Boolean)
+        .join('\n\n');
+
+    logTransportEvent('qwen.vision.request_started', {
+        model,
+        imageBytes,
+        base64Chars: base64Data.length,
+        promptChars: visionPrompt.length,
+        thinkingEnabled: true,
+    });
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model,
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: visionPrompt },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:image/jpeg;base64,${base64Data}`,
+                                },
+                            },
+                        ],
+                    },
+                ],
+                stream: true,
+                enable_thinking: true,
+            }),
+        });
+
+        logTransportEvent('qwen.vision.http_response', {
+            status: response.status,
+            elapsedMs: Date.now() - startedAt,
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logTransportEvent('qwen.vision.http_error', {
+                status: response.status,
+                elapsedMs: Date.now() - startedAt,
+                errorChars: errorText.length,
+            });
+            throw new Error(`Qwen 视觉接口返回 HTTP ${response.status}`);
+        }
+
+        const streamResult = await readQwenVisionStream(
+            response,
+            fullText => {
+                if (firstTokenAt === null) {
+                    firstTokenAt = Date.now();
+                    logTransportEvent('qwen.vision.first_token', {
+                        elapsedMs: firstTokenAt - startedAt,
+                    });
+                }
+
+                sendToRenderer(hasDisplayedResponse ? 'update-response' : 'new-response', fullText);
+                hasDisplayedResponse = true;
+            },
+            reasoning => {
+                reasoningChars += reasoning.length;
+            }
+        );
+
+        const fullText = streamResult.text.trim();
+        reasoningChars = Math.max(reasoningChars, streamResult.reasoningChars);
+        if (!fullText) {
+            throw new Error('Qwen 视觉接口返回空答案');
+        }
+
+        saveScreenAnalysis(visionPrompt, fullText, model);
+        logTransportEvent('qwen.vision.completed', {
+            model,
+            elapsedMs: Date.now() - startedAt,
+            firstTokenMs: firstTokenAt === null ? null : firstTokenAt - startedAt,
+            reasoningChars,
+            responseChars: fullText.length,
+        });
+        sendToRenderer('update-status', '正在聆听…');
+        return { success: true, text: fullText, model };
+    } catch (error) {
+        logTransportEvent('qwen.vision.failed', {
+            model,
+            elapsedMs: Date.now() - startedAt,
+            firstTokenMs: firstTokenAt === null ? null : firstTokenAt - startedAt,
+            reasoningChars,
+            error: error.message,
+        });
+        console.error('Error calling Qwen vision API:', error.message);
+        sendToRenderer('update-status', 'Qwen 视觉错误：' + error.message);
+        return { success: false, error: error.message };
+    }
 }
 
 async function requestDeepSeek(messages, onText) {
@@ -1702,7 +1912,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
             }
 
             if (currentProviderMode === 'qwen-realtime') {
-                return { success: false, error: 'Qwen 实时模式当前只支持语音和文本输入，不支持截图输入' };
+                return await sendImageToQwenVision(data, prompt);
             }
 
             const result = hasGroqKey() ? await sendImageToGroq(data, prompt) : await sendImageToGeminiHttp(data, prompt);

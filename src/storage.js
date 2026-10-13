@@ -12,6 +12,7 @@ const DEFAULT_CONFIG = {
     geminiLiveModel: 'gemini-3.1-flash-live-preview',
     deepseekModel: 'deepseek-flash',
     qwenRealtimeModel: 'qwen-audio-3.1-realtime-plus',
+    qwenVisionModel: 'qwen3-vl-plus',
     groqModel: 'qwen/qwen3.6-27b',
     groqImageModel: 'qwen/qwen3.6-27b',
     disableGroqThinking: true,

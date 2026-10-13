@@ -688,10 +688,10 @@ async function captureScreenshot(imageQuality = 'medium', isManual = false) {
     );
 }
 
-const MANUAL_SCREENSHOT_PROMPT = `Help me on this page, give me the answer no bs, complete answer.
-So if its a code question, give me the approach in few bullet points, then the entire code. Also if theres anything else i need to know, tell me.
-If its a question about the website, give me the answer no bs, complete answer.
-If its a mcq question, give me the answer no bs, complete answer.`;
+const MANUAL_SCREENSHOT_PROMPT = `请分析这张截图，使用简体中文直接给出答案。
+如果是代码或算法题，请说明题意、核心思路、关键代码、边界情况、时间复杂度和空间复杂度，并给出一段适合面试时直接口述的简洁答案。
+如果是报错，请指出原因和修改方案。
+如果截图不清楚，不要猜测，请指出需要重新截取的区域。`;
 
 async function captureManualScreenshot(imageQuality = null) {
     console.log('Manual screenshot triggered');
@@ -728,8 +728,8 @@ async function captureManualScreenshot(imageQuality = null) {
         return;
     }
 
-    // Downscale to max 1280px wide for faster transfer — vision models don't need 4K
-    const MAX_WIDTH = 1280;
+    // Qwen 视觉模式优先保证代码可读性；其它模式保留原有传输尺寸。
+    const MAX_WIDTH = preferencesCache?.providerMode === 'qwen-realtime' ? 1920 : 1280;
     const srcW = hiddenVideo.videoWidth;
     const srcH = hiddenVideo.videoHeight;
     let destW = srcW;
@@ -745,10 +745,10 @@ async function captureManualScreenshot(imageQuality = null) {
     let qualityValue;
     switch (quality) {
         case 'high':
-            qualityValue = 0.85;
+            qualityValue = preferencesCache?.providerMode === 'qwen-realtime' ? 0.92 : 0.85;
             break;
         case 'medium':
-            qualityValue = 0.6;
+            qualityValue = preferencesCache?.providerMode === 'qwen-realtime' ? 0.78 : 0.6;
             break;
         case 'low':
             qualityValue = 0.4;

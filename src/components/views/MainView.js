@@ -705,6 +705,7 @@ export class MainView extends LitElement {
         _groqImageModel: { state: true },
         _deepseekModel: { state: true },
         _qwenModel: { state: true },
+        _qwenVisionModel: { state: true },
         _disableGroqThinking: { state: true },
         _tokenError: { state: true },
         _keyError: { state: true },
@@ -738,6 +739,7 @@ export class MainView extends LitElement {
         this._groqImageModel = 'qwen/qwen3.6-27b';
         this._deepseekModel = 'deepseek-flash';
         this._qwenModel = 'qwen-audio-3.1-realtime-plus';
+        this._qwenVisionModel = 'qwen3-vl-plus';
         this._disableGroqThinking = true;
         this._tokenError = false;
         this._keyError = false;
@@ -782,6 +784,7 @@ export class MainView extends LitElement {
             this._groqImageModel = config.groqImageModel || 'qwen/qwen3.6-27b';
             this._deepseekModel = config.deepseekModel || 'deepseek-flash';
             this._qwenModel = config.qwenRealtimeModel || 'qwen-audio-3.1-realtime-plus';
+            this._qwenVisionModel = config.qwenVisionModel || 'qwen3-vl-plus';
             this._disableGroqThinking = config.disableGroqThinking === true;
 
             // Load local AI settings
@@ -998,6 +1001,12 @@ export class MainView extends LitElement {
     async _saveQwenModel(val) {
         this._qwenModel = val;
         await cheatingDaddy.storage.updateConfig('qwenRealtimeModel', val);
+        this.requestUpdate();
+    }
+
+    async _saveQwenVisionModel(val) {
+        this._qwenVisionModel = val;
+        await cheatingDaddy.storage.updateConfig('qwenVisionModel', val);
         this.requestUpdate();
     }
 
@@ -1324,6 +1333,12 @@ export class MainView extends LitElement {
                         <label class="form-label">实时模型</label>
                         <input type="text" .value=${this._qwenModel} @input=${e => this._saveQwenModel(e.target.value)} />
                         <div class="form-hint">默认使用 qwen-audio-3.1-realtime-plus；输入音频由官方实时接口转写，回答只返回文本。</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">截图识图模型</label>
+                        <input type="text" .value=${this._qwenVisionModel} @input=${e => this._saveQwenVisionModel(e.target.value)} />
+                        <div class="form-hint">默认使用 qwen3-vl-plus；截图通过独立视觉接口分析，思考模式开启。</div>
                     </div>
                 </div>
             </details>
