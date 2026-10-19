@@ -127,7 +127,18 @@ export class HistoryView extends LitElement {
 
             .tab-row {
                 display: flex;
+                align-items: center;
                 gap: 6px;
+                overflow-x: auto;
+            }
+
+            .tab-row .tab-btn {
+                flex-shrink: 0;
+                white-space: nowrap;
+            }
+
+            .export-btn {
+                margin-left: auto;
             }
 
             .tab-btn {
@@ -535,9 +546,6 @@ export class HistoryView extends LitElement {
                     >${this._getProfileLabel(this.selectedSession)} · ${this.formatDate(this.selectedSession.createdAt)} ·
                     ${this.formatTime(this.selectedSession.createdAt)}</span
                 >
-                <button class="tab-btn" style="margin-left:auto;" ?disabled=${this.exporting} @click=${this.exportSession}>
-                    ${this.exporting ? '正在导出……' : '导出面试记录'}
-                </button>
             </div>
             ${this.exportMessage ? html`<div class="detail-info" role="status">${this.exportMessage}</div>` : ''}
             <div class="tab-row">
@@ -564,6 +572,9 @@ export class HistoryView extends LitElement {
                     }}
                 >
                     背景信息
+                </button>
+                <button class="tab-btn export-btn" ?disabled=${this.exporting} @click=${this.exportSession}>
+                    ${this.exporting ? '正在导出……' : '导出面试记录'}
                 </button>
             </div>
             <section class="details-scroll">${this.renderTabContent()}</section>
