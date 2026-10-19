@@ -2,7 +2,10 @@ if (require('electron-squirrel-startup')) {
     process.exit(0);
 }
 
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
+const fs = require('fs/promises');
+const path = require('path');
+const { formatSessionMarkdown } = require('./utils/historyExport');
 const { createWindow, updateGlobalShortcuts } = require('./utils/window');
 const { setupGeminiIpcHandlers, stopMacOSAudioCapture, closeQwenRealtimeSession, sendToRenderer } = require('./utils/gemini');
 const { logTransportEvent } = require('./utils/transportLogger');
@@ -229,6 +232,27 @@ function setupStorageIpcHandlers() {
     });
 
     // ============ HISTORY ============
+    ipcMain.handle('storage:export-session', async (event, sessionId) => {
+        try {
+            if (typeof sessionId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId)) {
+                throw new Error('无效的会话编号');
+            }
+            const session = storage.getSession(sessionId);
+            if (!session) throw new Error('会话不存在，请刷新历史记录后重试');
+            const result = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
+                title: '导出面试记录',
+                defaultPath: path.join(app.getPath('documents'), `面试记录-${sessionId}.md`),
+                filters: [{ name: 'Markdown 文档', extensions: ['md'] }],
+            });
+            if (result.canceled || !result.filePath) return { success: true, canceled: true };
+            await fs.writeFile(result.filePath, '\uFEFF' + formatSessionMarkdown(session), 'utf8');
+            return { success: true };
+        } catch (error) {
+            console.error('Error exporting session:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
     ipcMain.handle('storage:get-all-sessions', async () => {
         try {
             return { success: true, data: storage.getAllSessions() };

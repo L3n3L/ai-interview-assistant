@@ -101,6 +101,9 @@ const storage = {
     },
 
     // Sessions (History)
+    async exportSession(sessionId) {
+        return ipcRenderer.invoke('storage:export-session', sessionId);
+    },
     async getAllSessions() {
         const result = await ipcRenderer.invoke('storage:get-all-sessions');
         return result.success ? result.data : [];
@@ -301,9 +304,8 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
     const audioMode = preferencesCache.audioMode || 'speaker_only';
     // Qwen recommends frequent 20–40 ms frames. Keep the legacy 100 ms
     // cadence for the existing providers so their VAD behavior is unchanged.
-    activeAudioChunkDuration = (preferencesCache.providerMode === 'qwen-realtime' || preferencesCache.providerMode === 'qwen-omni-realtime')
-        ? 0.04
-        : AUDIO_CHUNK_DURATION;
+    activeAudioChunkDuration =
+        preferencesCache.providerMode === 'qwen-realtime' || preferencesCache.providerMode === 'qwen-omni-realtime' ? 0.04 : AUDIO_CHUNK_DURATION;
 
     try {
         if (isMacOS) {
@@ -422,13 +424,15 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                     width: { ideal: 1920 },
                     height: { ideal: 1080 },
                 },
-                audio: captureSystemAudio ? {
-                    sampleRate: SAMPLE_RATE,
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                } : false,
+                audio: captureSystemAudio
+                    ? {
+                          sampleRate: SAMPLE_RATE,
+                          channelCount: 1,
+                          echoCancellation: true,
+                          noiseSuppression: true,
+                          autoGainControl: true,
+                      }
+                    : false,
             });
 
             const audioTracks = mediaStream.getAudioTracks();
@@ -483,7 +487,10 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                         video: false,
                     });
                     const microphoneTracks = micStream.getAudioTracks();
-                    console.log('Windows microphone capture started', microphoneTracks.map(track => track.getSettings()));
+                    console.log(
+                        'Windows microphone capture started',
+                        microphoneTracks.map(track => track.getSettings())
+                    );
                     reportAudioDiagnostic('microphone_capture_started', {
                         platform: 'win32',
                         audioMode,
@@ -548,15 +555,18 @@ function setupLinuxMicProcessing(micStream) {
     });
 
     if (micAudioContext.state !== 'running') {
-        micAudioContext.resume().then(() => {
-            reportAudioDiagnostic('microphone_audio_context_resumed', {
-                audioContextState: micAudioContext.state,
+        micAudioContext
+            .resume()
+            .then(() => {
+                reportAudioDiagnostic('microphone_audio_context_resumed', {
+                    audioContextState: micAudioContext.state,
+                });
+            })
+            .catch(error => {
+                reportAudioDiagnostic('microphone_audio_context_resume_failed', {
+                    error: error.message,
+                });
             });
-        }).catch(error => {
-            reportAudioDiagnostic('microphone_audio_context_resume_failed', {
-                error: error.message,
-            });
-        });
     }
 
     micProcessor.onaudioprocess = async e => {
@@ -844,8 +854,7 @@ async function captureManualScreenshot(imageQuality = null) {
     }
 
     // Qwen 视觉模式优先保证代码可读性；其它模式保留原有传输尺寸。
-    const isQwenRealtimeMode =
-        preferencesCache?.providerMode === 'qwen-realtime' || preferencesCache?.providerMode === 'qwen-omni-realtime';
+    const isQwenRealtimeMode = preferencesCache?.providerMode === 'qwen-realtime' || preferencesCache?.providerMode === 'qwen-omni-realtime';
     const MAX_WIDTH = isQwenRealtimeMode ? 1920 : 1280;
     const srcW = hiddenVideo.videoWidth;
     const srcH = hiddenVideo.videoHeight;
