@@ -243,15 +243,21 @@ export class AssistantView extends LitElement {
         }
 
         .phone-sync-button {
-            width: 36px;
-            height: 36px;
-            display: grid;
-            place-items: center;
+            width: auto;
+            min-width: 90px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0 9px;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             background: var(--bg-surface);
             color: var(--text-muted);
             cursor: pointer;
+            font-size: var(--font-size-xs);
+            white-space: nowrap;
             transition:
                 color var(--transition),
                 border-color var(--transition),
@@ -267,8 +273,9 @@ export class AssistantView extends LitElement {
         }
 
         .phone-sync-button svg {
-            width: 17px;
-            height: 17px;
+            width: 15px;
+            height: 15px;
+            flex: 0 0 auto;
         }
 
         .phone-sync-popover {
@@ -993,6 +1000,7 @@ export class AssistantView extends LitElement {
                             <rect x="6" y="2.8" width="12" height="18.4" rx="2.1"></rect>
                             <path d="M10 18h4"></path>
                         </svg>
+                        <span>手机同步</span>
                     </button>
                     ${
                         this._phonePopoverVisible
