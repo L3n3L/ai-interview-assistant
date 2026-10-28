@@ -295,8 +295,8 @@ export class CustomizeView extends LitElement {
     getDefaultKeybinds() {
         const isMac = cheatingDaddy.isMacOS || navigator.platform.includes('Mac');
         return {
-            moveUp: isMac ? 'Alt+Up' : 'Ctrl+Up',
-            moveDown: isMac ? 'Alt+Down' : 'Ctrl+Down',
+            moveUp: isMac ? 'Alt+Up' : 'Ctrl+Alt+Up',
+            moveDown: isMac ? 'Alt+Down' : 'Ctrl+Alt+Down',
             moveLeft: isMac ? 'Cmd+Shift+Left' : 'Ctrl+Shift+Left',
             moveRight: isMac ? 'Cmd+Shift+Right' : 'Ctrl+Shift+Right',
             toggleVisibility: isMac ? 'Cmd+\\' : 'Ctrl+\\',
@@ -304,8 +304,8 @@ export class CustomizeView extends LitElement {
             nextStep: isMac ? 'Cmd+Enter' : 'Ctrl+Enter',
             previousResponse: isMac ? 'Cmd+Left' : 'Ctrl+Left',
             nextResponse: isMac ? 'Cmd+Right' : 'Ctrl+Right',
-            scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
-            scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
+            scrollUp: isMac ? 'Cmd+Up' : 'Ctrl+Up',
+            scrollDown: isMac ? 'Cmd+Down' : 'Ctrl+Down',
         };
     }
 
@@ -318,10 +318,10 @@ export class CustomizeView extends LitElement {
             { key: 'toggleVisibility', name: '切换显示/隐藏', description: '显示或隐藏应用窗口' },
             { key: 'toggleClickThrough', name: '切换鼠标穿透', description: '启用或关闭鼠标穿透模式' },
             { key: 'nextStep', name: '询问下一步', description: '截取屏幕并询问下一步操作' },
-            { key: 'previousResponse', name: '上一条回复', description: '切换到上一条 AI 回复' },
-            { key: 'nextResponse', name: '下一条回复', description: '切换到下一条 AI 回复' },
-            { key: 'scrollUp', name: '向上滚动回复', description: '向上滚动回复内容' },
-            { key: 'scrollDown', name: '向下滚动回复', description: '向下滚动回复内容' },
+            { key: 'previousResponse', name: '上一组回复', description: '按三条为一组切换到上一页' },
+            { key: 'nextResponse', name: '下一组回复', description: '按三条为一组切换到下一页' },
+            { key: 'scrollUp', name: '向上滚动回答', description: '向上滚动回答内容，并同步到手机' },
+            { key: 'scrollDown', name: '向下滚动回答', description: '向下滚动回答内容，并同步到手机' },
         ];
     }
 
@@ -584,9 +584,11 @@ export class CustomizeView extends LitElement {
                             <option value="both">扬声器和麦克风</option>
                         </select>
                     </div>
-                    ${this.audioMode !== 'speaker_only' ? html`
-                        <div class="warning-callout">可能导致异常行为。请确认了解其作用后再修改。</div>
-                    ` : ''}
+                    ${
+                        this.audioMode !== 'speaker_only'
+                            ? html` <div class="warning-callout">可能导致异常行为。请确认了解其作用后再修改。</div> `
+                            : ''
+                    }
                     <div class="form-group">
                         <label class="form-label">图片质量</label>
                         <select class="control" .value=${this.selectedImageQuality} @change=${this.handleImageQualitySelect}>
@@ -666,20 +668,22 @@ export class CustomizeView extends LitElement {
         return html`
             <section class="surface">
                 <div class="surface-title">键盘快捷键</div>
-                ${this.getKeybindActions().map(action => html`
-                    <div class="keybind-row">
-                        <span class="keybind-name">${action.name}</span>
-                        <input
-                            type="text"
-                            class="control keybind-input"
-                            .value=${this.keybinds[action.key]}
-                            data-action=${action.key}
-                            @keydown=${this.handleKeybindInput}
-                            @focus=${this.handleKeybindFocus}
-                            readonly
-                        />
-                    </div>
-                `)}
+                ${this.getKeybindActions().map(
+                    action => html`
+                        <div class="keybind-row">
+                            <span class="keybind-name">${action.name}</span>
+                            <input
+                                type="text"
+                                class="control keybind-input"
+                                .value=${this.keybinds[action.key]}
+                                data-action=${action.key}
+                                @keydown=${this.handleKeybindInput}
+                                @focus=${this.handleKeybindFocus}
+                                readonly
+                            />
+                        </div>
+                    `
+                )}
                 <div style="margin-top: var(--space-sm);">
                     <button class="control" style="width:auto;padding:8px 10px;" @click=${this.resetKeybinds}>恢复默认</button>
                 </div>
@@ -699,9 +703,11 @@ export class CustomizeView extends LitElement {
                         ${this.isClearing ? '正在清除……' : '删除全部数据'}
                     </button>
                 </div>
-                ${this.clearStatusMessage ? html`
-                    <div class="status ${this.clearStatusType === 'success' ? 'success' : 'error'}">${this.clearStatusMessage}</div>
-                ` : ''}
+                ${
+                    this.clearStatusMessage
+                        ? html` <div class="status ${this.clearStatusType === 'success' ? 'success' : 'error'}">${this.clearStatusMessage}</div> `
+                        : ''
+                }
             </section>
         `;
     }
@@ -711,10 +717,7 @@ export class CustomizeView extends LitElement {
             <div class="unified-page">
                 <div class="unified-wrap">
                     <div class="page-title">设置</div>
-                    ${this.renderAudioSection()}
-                    ${this.renderLanguageSection()}
-                    ${this.renderAppearanceSection()}
-                    ${this.renderKeyboardSection()}
+                    ${this.renderAudioSection()} ${this.renderLanguageSection()} ${this.renderAppearanceSection()} ${this.renderKeyboardSection()}
                     ${this.renderPrivacySection()}
                 </div>
             </div>

@@ -9,6 +9,7 @@ const { formatSessionMarkdown } = require('./utils/historyExport');
 const { createWindow, updateGlobalShortcuts } = require('./utils/window');
 const { setupGeminiIpcHandlers, stopMacOSAudioCapture, closeQwenRealtimeSession, sendToRenderer } = require('./utils/gemini');
 const { logTransportEvent } = require('./utils/transportLogger');
+const phoneCompanion = require('./utils/phoneCompanion');
 const storage = require('./storage');
 
 const geminiSessionRef = { current: null };
@@ -44,6 +45,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
     stopMacOSAudioCapture();
+    phoneCompanion.stopSession().catch(error => console.error('Error stopping phone companion:', error));
     closeQwenRealtimeSession();
     require('./utils/localai').closeLocalSession();
 });
@@ -324,6 +326,39 @@ function setupStorageIpcHandlers() {
 }
 
 function setupGeneralIpcHandlers() {
+    const isLocalRenderer = event => typeof event.senderFrame?.url === 'string' && event.senderFrame.url.startsWith('file://');
+
+    ipcMain.handle('phone-companion:start-session', async event => {
+        if (!isLocalRenderer(event)) {
+            return { success: false, error: 'Invalid renderer' };
+        }
+        try {
+            return await phoneCompanion.startSession();
+        } catch (error) {
+            console.error('Error starting phone companion:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('phone-companion:get-info', async event => {
+        if (!isLocalRenderer(event)) {
+            return { success: false, error: 'Invalid renderer' };
+        }
+        try {
+            return await phoneCompanion.getConnectionInfo();
+        } catch (error) {
+            console.error('Error getting phone companion info:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.on('phone-companion:view-state', (event, payload) => {
+        if (!isLocalRenderer(event) || !payload || typeof payload !== 'object') return;
+        const currentResponseIndex = Number.isInteger(payload.currentResponseIndex) ? payload.currentResponseIndex : undefined;
+        const scrollRatio = Number.isFinite(payload.scrollRatio) ? payload.scrollRatio : undefined;
+        phoneCompanion.setViewState({ currentResponseIndex, scrollRatio });
+    });
+
     ipcMain.handle('get-app-version', async () => {
         return app.getVersion();
     });

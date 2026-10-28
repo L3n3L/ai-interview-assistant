@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#f7f8fa" />
+        <title>手机回答页样式样本</title>
+        <style>
+            :root {
+                color-scheme: light;
+                --page: #f7f8fa;
+                --surface: #ffffff;
+                --text: #20242b;
+                --muted: #68717e;
+                --border: #e4e7ec;
+                --accent: #526f9b;
+                --accent-soft: #edf2f8;
+                --shadow: 0 8px 28px rgb(21 32 48 / 4%);
+            }
+
+            html[data-theme='dark'] {
+                color-scheme: dark;
+                --page: #111418;
+                --surface: #191e24;
+                --text: #edf0f4;
+                --muted: #a5afbc;
+                --border: #2a313a;
+                --accent: #a8bfdc;
+                --accent-soft: #222d3a;
+                --shadow: 0 8px 28px rgb(0 0 0 / 14%);
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                min-width: 280px;
+                min-height: 100vh;
+                min-height: 100dvh;
+                margin: 0;
+                background: var(--page);
+                color: var(--text);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+                font-size: 16px;
+                line-height: 1.65;
+                -webkit-font-smoothing: antialiased;
+                transition:
+                    background-color 180ms ease,
+                    color 180ms ease;
+            }
+
+            .page {
+                width: min(100%, 760px);
+                min-height: 100vh;
+                min-height: 100dvh;
+                margin: 0 auto;
+                padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+            }
+
+            .topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                padding: 3px 0 22px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .heading {
+                min-width: 0;
+            }
+
+            h1 {
+                margin: 0;
+                font-size: 19px;
+                font-weight: 650;
+                line-height: 1.3;
+                letter-spacing: 0.01em;
+            }
+
+            .connection {
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                margin-top: 5px;
+                color: var(--muted);
+                font-size: 13px;
+                line-height: 1.4;
+            }
+
+            .connection-dot {
+                width: 7px;
+                height: 7px;
+                flex: 0 0 7px;
+                border-radius: 50%;
+                background: #438b68;
+                box-shadow: 0 0 0 3px color-mix(in srgb, #438b68 13%, transparent);
+            }
+
+            .theme-toggle {
+                display: grid;
+                width: 48px;
+                height: 48px;
+                flex: 0 0 48px;
+                place-items: center;
+                border: 1px solid var(--border);
+                border-radius: 15px;
+                background: var(--surface);
+                color: var(--text);
+                box-shadow: var(--shadow);
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+                transition:
+                    background-color 180ms ease,
+                    border-color 180ms ease,
+                    transform 120ms ease;
+            }
+
+            .theme-toggle:active {
+                transform: scale(0.96);
+            }
+            .theme-toggle:focus-visible {
+                outline: 3px solid var(--accent);
+                outline-offset: 3px;
+            }
+            .theme-toggle svg {
+                width: 21px;
+                height: 21px;
+            }
+            .theme-toggle .moon {
+                display: none;
+            }
+            html[data-theme='dark'] .theme-toggle .sun {
+                display: none;
+            }
+            html[data-theme='dark'] .theme-toggle .moon {
+                display: block;
+            }
+
+            .section-head {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 25px 2px 13px;
+            }
+
+            .section-title {
+                margin: 0;
+                color: var(--muted);
+                font-size: 13px;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+            }
+
+            .page-number {
+                color: var(--muted);
+                font-size: 13px;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+
+            .answers {
+                display: grid;
+                gap: 12px;
+            }
+
+            .answer {
+                padding: 18px 19px 20px;
+                border: 1px solid var(--border);
+                border-radius: 18px;
+                background: var(--surface);
+                box-shadow: var(--shadow);
+            }
+
+            .answer-head {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                margin-bottom: 11px;
+            }
+
+            .answer-number {
+                display: inline-grid;
+                min-width: 29px;
+                height: 25px;
+                place-items: center;
+                padding: 0 7px;
+                border-radius: 8px;
+                background: var(--accent-soft);
+                color: var(--accent);
+                font-size: 12px;
+                font-weight: 650;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .answer-label {
+                color: var(--muted);
+                font-size: 13px;
+                font-weight: 550;
+            }
+
+            .answer p {
+                margin: 0;
+                color: var(--text);
+                font-size: 16px;
+                line-height: 1.78;
+                overflow-wrap: anywhere;
+            }
+
+            .pagination {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 9px;
+                padding: 25px 0 2px;
+                color: var(--muted);
+                font-size: 13px;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .pagination-mark {
+                width: 20px;
+                height: 3px;
+                border-radius: 99px;
+                background: var(--border);
+            }
+
+            .pagination-mark.active {
+                background: var(--accent);
+            }
+
+            @media (min-width: 600px) {
+                .page {
+                    padding-right: 28px;
+                    padding-left: 28px;
+                }
+                .answers {
+                    gap: 14px;
+                }
+                .answer {
+                    padding: 20px 23px 22px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                *,
+                *::before,
+                *::after {
+                    scroll-behavior: auto !important;
+                    transition-duration: 0.01ms !important;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main class="page">
+            <header class="topbar">
+                <div class="heading">
+                    <h1>对话回答</h1>
+                    <div class="connection">
+                        <span class="connection-dot" aria-hidden="true"></span><span id="connectionStatus">已连接 · 只读同步</span>
+                    </div>
+                </div>
+                <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换昼夜模式">
+                    <svg
+                        class="sun"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.7"
+                        stroke-linecap="round"
+                        aria-hidden="true"
+                    >
+                        <circle cx="12" cy="12" r="3.7"></circle>
+                        <path
+                            d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"
+                        ></path>
+                    </svg>
+                    <svg
+                        class="moon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path d="M20.2 15.2A8.5 8.5 0 0 1 8.8 3.8 8.6 8.6 0 1 0 20.2 15.2Z"></path>
+                    </svg>
+                </button>
+            </header>
+
+            <section aria-labelledby="recentTitle">
+                <div class="section-head">
+                    <h2 class="section-title" id="recentTitle">最近的回答</h2>
+                    <span class="page-number" id="pageNumber">第 2 组 · 共 5 组</span>
+                </div>
+
+                <div class="answers" id="answers" aria-live="polite">
+                    <article class="answer">
+                        <div class="answer-head"><span class="answer-number">04</span><span class="answer-label">回答</span></div>
+                        <p>我会先确认目标和约束，再把问题拆成可以验证的小步骤。这样能尽快形成可执行方案，也方便团队根据反馈及时调整。</p>
+                    </article>
+                    <article class="answer">
+                        <div class="answer-head"><span class="answer-number">05</span><span class="answer-label">回答</span></div>
+                        <p>
+                            遇到意见不一致时，我会先确认双方关注的结果，再结合数据、时间和资源约束比较方案。找到共同目标后，通常更容易达成可落地的决定。
+                        </p>
+                    </article>
+                    <article class="answer">
+                        <div class="answer-head"><span class="answer-number">06</span><span class="answer-label">回答</span></div>
+                        <p>时间有限时，我会优先完成影响最大的核心部分，同时明确暂缓项和验收标准。交付后再依据实际反馈安排下一轮迭代。</p>
+                    </article>
+                </div>
+
+                <div class="pagination" id="pagination" aria-label="当前第 2 组，共 5 组；分页由电脑同步">
+                    <span class="pagination-mark" aria-hidden="true"></span>
+                    <span class="pagination-mark active" aria-hidden="true"></span>
+                    <span class="pagination-mark" aria-hidden="true"></span>
+                    <span class="pagination-mark" aria-hidden="true"></span>
+                    <span class="pagination-mark" aria-hidden="true"></span>
+                    <span>2 / 5</span>
+                </div>
+            </section>
+        </main>
+
+        <script>
+            const root = document.documentElement;
+            const themeToggle = document.getElementById('themeToggle');
+
+            try {
+                const savedTheme = localStorage.getItem('phone-companion-theme');
+                if (savedTheme === 'dark' || savedTheme === 'light') root.dataset.theme = savedTheme;
+            } catch (_) {
+                // Keep the sample usable when browser storage is unavailable.
+            }
+
+            function syncThemeButton() {
+                const isDark = root.dataset.theme === 'dark';
+                themeToggle.setAttribute('aria-pressed', String(isDark));
+                themeToggle.setAttribute('aria-label', isDark ? '切换到白天模式' : '切换到夜间模式');
+                document.querySelector('meta[name="theme-color"]').content = isDark ? '#111418' : '#f7f8fa';
+            }
+
+            themeToggle.addEventListener('click', () => {
+                root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+                try {
+                    localStorage.setItem('phone-companion-theme', root.dataset.theme);
+                } catch (_) {
+                    // Theme still changes for the current preview session.
+                }
+                syncThemeButton();
+            });
+
+            syncThemeButton();
+
+            const livePageMatch = location.pathname.match(/^\/p\/([A-Za-z0-9_-]{32,64})$/);
+            if (location.protocol === 'http:' && livePageMatch) {
+                startLiveMirror(livePageMatch[1]);
+            }
+
+            async function loadScript(source) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = source;
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('页面组件加载失败'));
+                    document.head.appendChild(script);
+                });
+            }
+
+            async function startLiveMirror(token) {
+                const status = document.getElementById('connectionStatus');
+                const answers = document.getElementById('answers');
+                const pageNumber = document.getElementById('pageNumber');
+                const pagination = document.getElementById('pagination');
+                const state = { responses: [], currentResponseIndex: -1, scrollRatio: 0 };
+                let scrollFrame = null;
+                let pendingScrollRatio = 0;
+                let responseRenderTimer = null;
+                status.textContent = '正在连接电脑…';
+                pageNumber.textContent = '等待连接';
+                pagination.textContent = '正在同步当前会话';
+                answers.innerHTML =
+                    '<article class="answer"><div class="answer-head"><span class="answer-label">正在连接</span></div><p>连接成功后，这里只显示本场回答。</p></article>';
+
+                try {
+                    await Promise.all([loadScript('/assets/marked.js'), loadScript('/assets/purify.js')]);
+                } catch (error) {
+                    status.textContent = error.message;
+                    return;
+                }
+
+                function currentPageStart() {
+                    if (!state.responses.length || state.currentResponseIndex < 0) return 0;
+                    const index = Math.min(state.currentResponseIndex, state.responses.length - 1);
+                    return Math.floor(index / 3) * 3;
+                }
+
+                function syncScroll(ratio) {
+                    pendingScrollRatio = ratio;
+                    if (scrollFrame !== null) return;
+                    scrollFrame = requestAnimationFrame(() => {
+                        scrollFrame = null;
+                        const scrollable = document.scrollingElement;
+                        if (!scrollable) return;
+                        const maxScroll = Math.max(0, scrollable.scrollHeight - window.innerHeight);
+                        scrollable.scrollTop = maxScroll * pendingScrollRatio;
+                    });
+                }
+
+                function render(syncDesktopScroll = false) {
+                    const scrollable = document.scrollingElement;
+                    const previousMaxScroll = scrollable ? Math.max(0, scrollable.scrollHeight - window.innerHeight) : 0;
+                    const previousScrollRatio = previousMaxScroll ? scrollable.scrollTop / previousMaxScroll : 0;
+                    const count = state.responses.length;
+                    const pageStart = currentPageStart();
+                    const pageCount = Math.max(1, Math.ceil(count / 3));
+                    const pageIndex = count ? Math.floor(pageStart / 3) + 1 : 1;
+                    const visible = state.responses.slice(pageStart, pageStart + 3);
+
+                    pageNumber.textContent = `第 ${pageIndex} 组 · 共 ${pageCount} 组`;
+                    pagination.setAttribute('aria-label', `当前第 ${pageIndex} 组，共 ${pageCount} 组；分页由电脑同步`);
+                    pagination.innerHTML = `${Array.from({ length: pageCount }, (_, index) => `<span class="pagination-mark ${index + 1 === pageIndex ? 'active' : ''}" aria-hidden="true"></span>`).join('')}<span>${pageIndex} / ${pageCount}</span>`;
+
+                    if (visible.length === 0) {
+                        answers.innerHTML =
+                            '<article class="answer"><div class="answer-head"><span class="answer-label">等待回答</span></div><p>模型生成的回答会显示在这里。</p></article>';
+                    } else {
+                        answers.innerHTML = visible
+                            .map((response, offset) => {
+                                const number = pageStart + offset + 1;
+                                const rendered = window.DOMPurify.sanitize(window.marked.parse(response || ''), { USE_PROFILES: { html: true } });
+                                return `<article class="answer"><div class="answer-head"><span class="answer-number">${String(number).padStart(2, '0')}</span><span class="answer-label">回答</span></div><div class="answer-content">${rendered}</div></article>`;
+                            })
+                            .join('');
+                    }
+
+                    syncScroll(syncDesktopScroll ? state.scrollRatio : previousScrollRatio);
+                }
+
+                function scheduleResponseRender() {
+                    if (responseRenderTimer !== null) return;
+                    responseRenderTimer = setTimeout(() => {
+                        responseRenderTimer = null;
+                        render();
+                    }, 80);
+                }
+
+                const events = new EventSource(`/events?token=${encodeURIComponent(token)}`);
+                events.addEventListener('open', () => {
+                    status.textContent = '已连接 · 只读同步';
+                });
+                events.addEventListener('error', () => {
+                    status.textContent = '连接中断 · 正在重连';
+                });
+                events.addEventListener('snapshot', event => {
+                    const snapshot = JSON.parse(event.data);
+                    state.responses = Array.isArray(snapshot.responses) ? snapshot.responses : [];
+                    state.currentResponseIndex = Number.isInteger(snapshot.currentResponseIndex) ? snapshot.currentResponseIndex : -1;
+                    state.scrollRatio = Number.isFinite(snapshot.scrollRatio) ? snapshot.scrollRatio : 0;
+                    render(true);
+                });
+                events.addEventListener('response.new', event => {
+                    const update = JSON.parse(event.data);
+                    const previousPageStart = currentPageStart();
+                    state.responses.push(update.response || '');
+                    if (Number.isInteger(update.currentResponseIndex)) {
+                        state.currentResponseIndex = update.currentResponseIndex;
+                    } else {
+                        const latestPageStart = Math.floor(Math.max(0, state.responses.length - 1) / 3) * 3;
+                        const selectedPageStart = state.currentResponseIndex < 0 ? -1 : Math.floor(state.currentResponseIndex / 3) * 3;
+                        if (selectedPageStart === latestPageStart || state.currentResponseIndex === -1)
+                            state.currentResponseIndex = state.responses.length - 1;
+                    }
+                    render(currentPageStart() !== previousPageStart);
+                });
+                events.addEventListener('response.update', event => {
+                    const update = JSON.parse(event.data);
+                    if (!Number.isInteger(update.index) || update.index < 0 || update.index > state.responses.length) return;
+                    if (update.index === state.responses.length) state.responses.push(update.response || '');
+                    else state.responses[update.index] = update.response || '';
+                    if (state.currentResponseIndex < 0) state.currentResponseIndex = update.index;
+                    const pageStart = currentPageStart();
+                    if (update.index >= pageStart && update.index < pageStart + 3) scheduleResponseRender();
+                });
+                events.addEventListener('response.append', event => {
+                    const update = JSON.parse(event.data);
+                    if (!Number.isInteger(update.index) || update.index < 0 || typeof update.text !== 'string') return;
+                    if (update.index === state.responses.length) state.responses.push(update.text);
+                    else if (update.index < state.responses.length) state.responses[update.index] += update.text;
+                    else return;
+                    if (state.currentResponseIndex < 0) state.currentResponseIndex = update.index;
+                    const pageStart = currentPageStart();
+                    if (update.index >= pageStart && update.index < pageStart + 3) scheduleResponseRender();
+                });
+                events.addEventListener('response.discard', event => {
+                    const update = JSON.parse(event.data);
+                    const previousPageStart = currentPageStart();
+                    state.responses.length = Math.max(0, Number(update.responseCount) || 0);
+                    state.currentResponseIndex = Number.isInteger(update.currentResponseIndex) ? update.currentResponseIndex : -1;
+                    render(currentPageStart() !== previousPageStart);
+                });
+                events.addEventListener('view.state', event => {
+                    const update = JSON.parse(event.data);
+                    const previousPageStart = currentPageStart();
+                    if (Number.isInteger(update.currentResponseIndex)) state.currentResponseIndex = update.currentResponseIndex;
+                    if (Number.isFinite(update.scrollRatio)) state.scrollRatio = update.scrollRatio;
+                    if (currentPageStart() !== previousPageStart) render(true);
+                    else syncScroll(state.scrollRatio);
+                });
+                events.addEventListener('session.ended', () => {
+                    if (responseRenderTimer !== null) clearTimeout(responseRenderTimer);
+                    responseRenderTimer = null;
+                    render();
+                    status.textContent = '会话已结束';
+                    events.close();
+                });
+                window.addEventListener(
+                    'pagehide',
+                    () => {
+                        events.close();
+                        if (responseRenderTimer !== null) clearTimeout(responseRenderTimer);
+                        if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
+                    },
+                    { once: true }
+                );
+            }
+        </script>
+    </body>
+</html>

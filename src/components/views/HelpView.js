@@ -73,7 +73,10 @@ export class HelpView extends LitElement {
                 color: var(--text-primary);
                 font-size: var(--font-size-sm);
                 cursor: pointer;
-                transition: border-color var(--transition), color var(--transition), background var(--transition);
+                transition:
+                    border-color var(--transition),
+                    color var(--transition),
+                    background var(--transition);
             }
 
             .link-button:hover {
@@ -87,7 +90,6 @@ export class HelpView extends LitElement {
                     grid-template-columns: 1fr;
                 }
             }
-
         `,
     ];
 
@@ -118,8 +120,8 @@ export class HelpView extends LitElement {
     getDefaultKeybinds() {
         const isMac = cheatingDaddy.isMacOS || navigator.platform.includes('Mac');
         return {
-            moveUp: isMac ? 'Alt+Up' : 'Ctrl+Up',
-            moveDown: isMac ? 'Alt+Down' : 'Ctrl+Down',
+            moveUp: isMac ? 'Alt+Up' : 'Ctrl+Alt+Up',
+            moveDown: isMac ? 'Alt+Down' : 'Ctrl+Alt+Down',
             moveLeft: isMac ? 'Cmd+Shift+Left' : 'Ctrl+Shift+Left',
             moveRight: isMac ? 'Cmd+Shift+Right' : 'Ctrl+Shift+Right',
             toggleVisibility: isMac ? 'Cmd+\\' : 'Ctrl+\\',
@@ -127,8 +129,8 @@ export class HelpView extends LitElement {
             nextStep: isMac ? 'Cmd+Enter' : 'Ctrl+Enter',
             previousResponse: isMac ? 'Cmd+Left' : 'Ctrl+Left',
             nextResponse: isMac ? 'Cmd+Right' : 'Ctrl+Right',
-            scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
-            scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
+            scrollUp: isMac ? 'Cmd+Up' : 'Ctrl+Up',
+            scrollDown: isMac ? 'Cmd+Down' : 'Ctrl+Down',
         };
     }
 
@@ -149,10 +151,10 @@ export class HelpView extends LitElement {
             ['切换显示/隐藏', this.keybinds.toggleVisibility],
             ['切换鼠标穿透', this.keybinds.toggleClickThrough],
             ['询问下一步', this.keybinds.nextStep],
-            ['上一条回复', this.keybinds.previousResponse],
-            ['下一条回复', this.keybinds.nextResponse],
-            ['向上滚动回复', this.keybinds.scrollUp],
-            ['向下滚动回复', this.keybinds.scrollDown],
+            ['上一组回复（三条）', this.keybinds.previousResponse],
+            ['下一组回复（三条）', this.keybinds.nextResponse],
+            ['向上滚动回答（同步手机）', this.keybinds.scrollUp],
+            ['向下滚动回答（同步手机）', this.keybinds.scrollDown],
         ];
 
         return html`
@@ -163,8 +165,12 @@ export class HelpView extends LitElement {
                     <section class="surface">
                         <div class="surface-title">支持</div>
                         <div class="link-row">
-                            <button class="link-button" @click=${() => this._open('https://github.com/L3n3L/ai-interview-assistant')}>项目主页</button>
-                            <button class="link-button" @click=${() => this._open('https://github.com/L3n3L/ai-interview-assistant/issues')}>问题反馈</button>
+                            <button class="link-button" @click=${() => this._open('https://github.com/L3n3L/ai-interview-assistant')}>
+                                项目主页
+                            </button>
+                            <button class="link-button" @click=${() => this._open('https://github.com/L3n3L/ai-interview-assistant/issues')}>
+                                问题反馈
+                            </button>
                             <button class="link-button" @click=${() => this._open('https://discord.gg/GCBdubnXfJ')}>Discord 社区</button>
                         </div>
                     </section>
@@ -172,12 +178,14 @@ export class HelpView extends LitElement {
                     <section class="surface">
                         <div class="surface-title">键盘快捷键</div>
                         <div class="shortcut-grid">
-                            ${shortcutRows.map(([label, keys]) => html`
-                                <div class="shortcut-row">
-                                    <span class="shortcut-label">${label}</span>
-                                    <span class="shortcut-keys">${this._formatKeybind(keys)}</span>
-                                </div>
-                            `)}
+                            ${shortcutRows.map(
+                                ([label, keys]) => html`
+                                    <div class="shortcut-row">
+                                        <span class="shortcut-label">${label}</span>
+                                        <span class="shortcut-keys">${this._formatKeybind(keys)}</span>
+                                    </div>
+                                `
+                            )}
                         </div>
                     </section>
                 </div>

@@ -31,7 +31,9 @@
     "license": "GPL-3.0",
     "dependencies": {
         "@google/genai": "^1.2.0",
+        "dompurify": "^3.4.17",
         "electron-squirrel-startup": "^1.0.1",
+        "qrcode": "^1.5.4",
         "ws": "^8.19.0"
     },
     "devDependencies": {

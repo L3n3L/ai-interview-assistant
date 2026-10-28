@@ -71,12 +71,22 @@ export class AssistantView extends LitElement {
             font-weight: var(--font-weight-semibold);
         }
 
-        .response-container h1 { font-size: 1.5em; }
-        .response-container h2 { font-size: 1.3em; }
-        .response-container h3 { font-size: 1.15em; }
-        .response-container h4 { font-size: 1.05em; }
+        .response-container h1 {
+            font-size: 1.5em;
+        }
+        .response-container h2 {
+            font-size: 1.3em;
+        }
+        .response-container h3 {
+            font-size: 1.15em;
+        }
+        .response-container h4 {
+            font-size: 1.05em;
+        }
         .response-container h5,
-        .response-container h6 { font-size: 1em; }
+        .response-container h6 {
+            font-size: 1em;
+        }
 
         .response-container p {
             margin: 0.6em 0;
@@ -179,6 +189,7 @@ export class AssistantView extends LitElement {
         /* ── Response navigation strip ── */
 
         .response-nav {
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -221,6 +232,117 @@ export class AssistantView extends LitElement {
             font-family: var(--font-mono);
             min-width: 40px;
             text-align: center;
+        }
+
+        .phone-sync-control {
+            position: absolute;
+            z-index: 4;
+            top: 50%;
+            right: var(--space-md);
+            transform: translateY(-50%);
+        }
+
+        .phone-sync-button {
+            width: 36px;
+            height: 36px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition:
+                color var(--transition),
+                border-color var(--transition),
+                background var(--transition);
+        }
+
+        .phone-sync-button:hover,
+        .phone-sync-button:focus-visible,
+        .phone-sync-button[aria-pressed='true'] {
+            color: var(--text-primary);
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        .phone-sync-button svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .phone-sync-popover {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 10px);
+            width: min(340px, 78vw);
+            max-height: min(64vh, 440px);
+            overflow: auto;
+            padding: 14px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            background: var(--bg-app);
+            color: var(--text-primary);
+            box-shadow: 0 12px 34px rgb(0 0 0 / 28%);
+        }
+
+        .phone-sync-title {
+            margin: 0 0 4px;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+        }
+
+        .phone-sync-hint,
+        .phone-sync-error {
+            margin: 0 0 10px;
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            line-height: 1.5;
+        }
+
+        .phone-sync-error {
+            color: var(--color-danger, #dc625e);
+        }
+
+        .phone-qr-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px;
+        }
+
+        .phone-qr-entry {
+            min-width: 0;
+            padding: 9px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
+            text-align: center;
+        }
+
+        .phone-qr-entry img {
+            display: block;
+            width: min(100%, 132px);
+            aspect-ratio: 1;
+            margin: 7px auto;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .phone-qr-label {
+            overflow: hidden;
+            color: var(--text-primary);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .phone-qr-address {
+            overflow-wrap: anywhere;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            line-height: 1.4;
         }
 
         /* ── Bottom input bar ── */
@@ -280,7 +402,9 @@ export class AssistantView extends LitElement {
             display: flex;
             align-items: center;
             gap: 4px;
-            transition: border-color 0.4s ease, background var(--transition);
+            transition:
+                border-color 0.4s ease,
+                background var(--transition);
             flex-shrink: 0;
             overflow: hidden;
         }
@@ -324,6 +448,9 @@ export class AssistantView extends LitElement {
         onSendText: { type: Function },
         shouldAnimateResponse: { type: Boolean },
         isAnalyzing: { type: Boolean, state: true },
+        _phoneBridgeInfo: { state: true },
+        _phonePopoverVisible: { state: true },
+        _phonePopoverPinned: { state: true },
     };
 
     constructor() {
@@ -334,6 +461,13 @@ export class AssistantView extends LitElement {
         this.onSendText = () => {};
         this.isAnalyzing = false;
         this._animFrame = null;
+        this._phoneBridgeInfo = null;
+        this._phoneBridgeInfoLoaded = false;
+        this._phonePopoverVisible = false;
+        this._phonePopoverPinned = false;
+        this._phonePointerInside = false;
+        this._phoneCloseTimer = null;
+        this._scrollReportFrame = null;
     }
 
     getProfileNames() {
@@ -450,11 +584,87 @@ export class AssistantView extends LitElement {
         }
     }
 
+    reportScrollState() {
+        if (this._scrollReportFrame !== null) return;
+        this._scrollReportFrame = requestAnimationFrame(() => {
+            this._scrollReportFrame = null;
+            const container = this.shadowRoot.querySelector('.response-container');
+            if (!container) return;
+            const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+            this.dispatchEvent(
+                new CustomEvent('response-scroll-changed', {
+                    bubbles: true,
+                    composed: true,
+                    detail: { scrollRatio: maxScroll ? container.scrollTop / maxScroll : 0 },
+                })
+            );
+        });
+    }
+
+    handlePhonePointerEnter() {
+        this._phonePointerInside = true;
+        clearTimeout(this._phoneCloseTimer);
+        this.openPhonePopover();
+    }
+
+    handlePhonePointerLeave() {
+        this._phonePointerInside = false;
+        if (this._phonePopoverPinned) return;
+        clearTimeout(this._phoneCloseTimer);
+        this._phoneCloseTimer = setTimeout(() => {
+            if (!this._phonePointerInside && !this._phonePopoverPinned) {
+                this._phonePopoverVisible = false;
+                this.requestUpdate();
+            }
+        }, 450);
+    }
+
+    async openPhonePopover() {
+        this._phonePopoverVisible = true;
+        this.requestUpdate();
+        if (this._phoneBridgeInfoLoaded) return;
+
+        this._phoneBridgeInfoLoaded = true;
+        try {
+            const { ipcRenderer } = window.require('electron');
+            this._phoneBridgeInfo = await ipcRenderer.invoke('phone-companion:get-info');
+        } catch (error) {
+            this._phoneBridgeInfo = { success: false, error: error.message };
+        }
+        this.requestUpdate();
+    }
+
+    togglePhonePopover() {
+        this._phonePopoverPinned = !this._phonePopoverPinned;
+        if (this._phonePopoverPinned) {
+            this.openPhonePopover();
+            return;
+        }
+        if (!this._phonePointerInside) {
+            this._phonePopoverVisible = false;
+            this.requestUpdate();
+        }
+    }
+
+    handlePhonePopoverKeydown(event) {
+        if (event.key !== 'Escape') return;
+        this._phonePopoverPinned = false;
+        this._phonePopoverVisible = false;
+        this.requestUpdate();
+    }
+
     connectedCallback() {
         super.connectedCallback();
 
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
+
+            this._phoneAddressesChanged = (_event, info) => {
+                this._phoneBridgeInfo = info;
+                this._phoneBridgeInfoLoaded = true;
+                this.requestUpdate();
+            };
+            ipcRenderer.on('phone-companion:addresses-updated', this._phoneAddressesChanged);
 
             this.handlePreviousResponse = () => this.navigateToPreviousResponse();
             this.handleNextResponse = () => this.navigateToNextResponse();
@@ -474,11 +684,14 @@ export class AssistantView extends LitElement {
 
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
+            if (this._phoneAddressesChanged) ipcRenderer.removeListener('phone-companion:addresses-updated', this._phoneAddressesChanged);
             if (this.handlePreviousResponse) ipcRenderer.removeListener('navigate-previous-response', this.handlePreviousResponse);
             if (this.handleNextResponse) ipcRenderer.removeListener('navigate-next-response', this.handleNextResponse);
             if (this.handleScrollUp) ipcRenderer.removeListener('scroll-response-up', this.handleScrollUp);
             if (this.handleScrollDown) ipcRenderer.removeListener('scroll-response-down', this.handleScrollDown);
         }
+        clearTimeout(this._phoneCloseTimer);
+        if (this._scrollReportFrame !== null) cancelAnimationFrame(this._scrollReportFrame);
     }
 
     async handleSendText() {
@@ -532,7 +745,7 @@ export class AssistantView extends LitElement {
         const perimeter = 2 * straightLen + 2 * arcLen;
 
         // Given a distance along the perimeter, return {x, y, nx, ny} (position + inward normal)
-        const pointOnPerimeter = (d) => {
+        const pointOnPerimeter = d => {
             d = ((d % perimeter) + perimeter) % perimeter;
             // Top straight: left to right
             if (d < straightLen) {
@@ -571,7 +784,7 @@ export class AssistantView extends LitElement {
             seeds.push({ pos: Math.random(), drift: Math.random(), depthSeed: Math.random() });
         }
 
-        const draw = (now) => {
+        const draw = now => {
             const elapsed = (now - startTime) / 1000;
             const fade = Math.min(1, elapsed / FADE_IN);
 
@@ -702,6 +915,7 @@ export class AssistantView extends LitElement {
             if (this.shouldAnimateResponse) {
                 this.dispatchEvent(new CustomEvent('response-animation-complete', { bubbles: true, composed: true }));
             }
+            this.reportScrollState();
         }
     }
 
@@ -711,38 +925,126 @@ export class AssistantView extends LitElement {
         const pageEnd = Math.min(pageStart + RESPONSE_PAGE_SIZE, this.responses.length);
 
         return html`
-            <div class="response-container" id="responseContainer"></div>
+            <div class="response-container" id="responseContainer" @scroll=${() => this.reportScrollState()}></div>
 
-            ${hasMultipleResponses ? html`
-                <div class="response-nav">
-                    <button class="nav-btn" @click=${this.navigateToPreviousResponse} ?disabled=${pageStart <= 0} title="上一组回复">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+            <div class="response-nav">
+                ${
+                    hasMultipleResponses
+                        ? html`
+                              <button class="nav-btn" @click=${this.navigateToPreviousResponse} ?disabled=${pageStart <= 0} title="上一组回复">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                      <path
+                                          fill-rule="evenodd"
+                                          d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+                                          clip-rule="evenodd"
+                                      />
+                                  </svg>
+                              </button>
+                              <span class="response-counter">第 ${pageStart + 1}-${pageEnd} / ${this.responses.length} 条</span>
+                              <button
+                                  class="nav-btn"
+                                  @click=${this.navigateToNextResponse}
+                                  ?disabled=${pageEnd >= this.responses.length}
+                                  title="下一组回复"
+                              >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                      <path
+                                          fill-rule="evenodd"
+                                          d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+                                          clip-rule="evenodd"
+                                      />
+                                  </svg>
+                              </button>
+                          `
+                        : html`<span class="response-counter">${this.responses.length ? `第 1-${pageEnd} / ${this.responses.length} 条` : ''}</span>`
+                }
+                <div
+                    class="phone-sync-control"
+                    @pointerenter=${() => this.handlePhonePointerEnter()}
+                    @pointerleave=${() => this.handlePhonePointerLeave()}
+                    @keydown=${event => this.handlePhonePopoverKeydown(event)}
+                >
+                    <button
+                        class="phone-sync-button"
+                        type="button"
+                        aria-label="显示手机同步二维码"
+                        aria-haspopup="dialog"
+                        aria-expanded=${this._phonePopoverVisible}
+                        aria-pressed=${this._phonePopoverPinned}
+                        title="手机同步"
+                        @focus=${() => this.openPhonePopover()}
+                        @blur=${() => {
+                            if (!this._phonePointerInside && !this._phonePopoverPinned) {
+                                this._phonePopoverVisible = false;
+                                this.requestUpdate();
+                            }
+                        }}
+                        @click=${() => this.togglePhonePopover()}
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.7"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <rect x="6" y="2.8" width="12" height="18.4" rx="2.1"></rect>
+                            <path d="M10 18h4"></path>
                         </svg>
                     </button>
-                    <span class="response-counter">第 ${pageStart + 1}-${pageEnd} / ${this.responses.length} 条</span>
-                    <button class="nav-btn" @click=${this.navigateToNextResponse} ?disabled=${pageEnd >= this.responses.length} title="下一组回复">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
+                    ${
+                        this._phonePopoverVisible
+                            ? html`
+                                  <section
+                                      class="phone-sync-popover"
+                                      role="dialog"
+                                      aria-label="手机只读同步二维码"
+                                      @pointerenter=${() => this.handlePhonePointerEnter()}
+                                  >
+                                      <h2 class="phone-sync-title">手机只读同步</h2>
+                                      <p class="phone-sync-hint">连接同一网络后扫码。切换 Wi-Fi 或 USB 网络时，使用对应的新二维码。</p>
+                                      ${
+                                          !this._phoneBridgeInfo
+                                              ? html`<p class="phone-sync-hint">正在获取本地连接地址…</p>`
+                                              : this._phoneBridgeInfo.error
+                                                ? html`<p class="phone-sync-error">${this._phoneBridgeInfo.error}</p>`
+                                                : html`<div class="phone-qr-list">
+                                                      ${(this._phoneBridgeInfo.addresses || []).map(
+                                                          address => html`
+                                                              <div class="phone-qr-entry">
+                                                                  <div class="phone-qr-label">${address.name} · ${address.interfaceName}</div>
+                                                                  <img src=${address.qrDataUrl} alt="${address.name} 手机同步二维码" />
+                                                                  <div class="phone-qr-address">${address.address}</div>
+                                                              </div>
+                                                          `
+                                                      )}
+                                                  </div>`
+                                      }
+                                  </section>
+                              `
+                            : ''
+                    }
                 </div>
-            ` : ''}
+            </div>
 
             <div class="input-bar">
                 <div class="input-bar-inner">
-                    <input
-                        type="text"
-                        id="textInput"
-                        placeholder="输入消息……"
-                        @keydown=${this.handleTextKeydown}
-                    />
+                    <input type="text" id="textInput" placeholder="输入消息……" @keydown=${this.handleTextKeydown} />
                 </div>
                 <button class="analyze-btn ${this.isAnalyzing ? 'analyzing' : ''}" @click=${this.handleScreenAnswer}>
                     <canvas class="analyze-canvas"></canvas>
                     <span class="analyze-btn-content">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24">
-                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3v7h6l-8 11v-7H5z" />
+                            <path
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M13 3v7h6l-8 11v-7H5z"
+                            />
                         </svg>
                         分析屏幕
                     </span>

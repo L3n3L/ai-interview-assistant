@@ -8,6 +8,7 @@ const { connectCloud, sendCloudAudio, sendCloudText, sendCloudImage, closeCloud,
 const { startTransportLog, logTransportEvent, closeTransportLog } = require('./transportLogger');
 const { QwenRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_REALTIME_MODEL } = require('./qwen-realtime');
 const { QwenOmniRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_OMNI_REALTIME_MODEL } = require('./qwen-omni-realtime');
+const phoneCompanion = require('./phoneCompanion');
 
 const DEFAULT_QWEN_VISION_MODEL = 'qwen3-vl-plus';
 const DEFAULT_QWEN_VISION_ENDPOINT = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
@@ -75,6 +76,7 @@ const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_DELAY = 2000;
 
 function sendToRenderer(channel, data) {
+    phoneCompanion.publishRendererEvent(channel, data);
     const windows = BrowserWindow.getAllWindows();
     if (windows.length > 0) {
         windows[0].webContents.send(channel, data);
@@ -104,10 +106,7 @@ function handleQwenRealtimeEvent(event) {
             turnDetection: event.session?.turn_detection?.type || null,
             modalities: event.session?.modalities || [],
         });
-        sendToRenderer(
-            'update-status',
-            currentProviderMode === 'qwen-omni-realtime' ? 'Qwen Omni 实时会话已连接' : 'Qwen 实时会话已连接'
-        );
+        sendToRenderer('update-status', currentProviderMode === 'qwen-omni-realtime' ? 'Qwen Omni 实时会话已连接' : 'Qwen 实时会话已连接');
         return;
     }
 
@@ -2109,6 +2108,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     ipcMain.handle('close-session', async event => {
         try {
+            await phoneCompanion.stopSession();
             stopMacOSAudioCapture();
 
             if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {

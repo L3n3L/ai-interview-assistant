@@ -92,8 +92,8 @@ function createWindow(sendToRenderer, geminiSessionRef) {
 function getDefaultKeybinds() {
     const isMac = process.platform === 'darwin';
     return {
-        moveUp: isMac ? 'Alt+Up' : 'Ctrl+Up',
-        moveDown: isMac ? 'Alt+Down' : 'Ctrl+Down',
+        moveUp: isMac ? 'Alt+Up' : 'Ctrl+Alt+Up',
+        moveDown: isMac ? 'Alt+Down' : 'Ctrl+Alt+Down',
         // Ctrl+Left/Right are reserved for navigating responses.
         moveLeft: isMac ? 'Cmd+Shift+Left' : 'Ctrl+Shift+Left',
         moveRight: isMac ? 'Cmd+Shift+Right' : 'Ctrl+Shift+Right',
@@ -102,8 +102,8 @@ function getDefaultKeybinds() {
         nextStep: isMac ? 'Cmd+Enter' : 'Ctrl+Enter',
         previousResponse: isMac ? 'Cmd+Left' : 'Ctrl+Left',
         nextResponse: isMac ? 'Cmd+Right' : 'Ctrl+Right',
-        scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
-        scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
+        scrollUp: isMac ? 'Cmd+Up' : 'Ctrl+Up',
+        scrollDown: isMac ? 'Cmd+Down' : 'Ctrl+Down',
         emergencyErase: isMac ? 'Cmd+Shift+E' : 'Ctrl+Shift+E',
     };
 }

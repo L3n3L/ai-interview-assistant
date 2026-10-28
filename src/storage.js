@@ -275,16 +275,24 @@ function migrateKeybinds(savedKeybinds) {
 
     const isMac = process.platform === 'darwin';
     const defaults = {
+        moveUp: isMac ? 'Alt+Up' : 'Ctrl+Alt+Up',
+        moveDown: isMac ? 'Alt+Down' : 'Ctrl+Alt+Down',
         moveLeft: isMac ? 'Cmd+Shift+Left' : 'Ctrl+Shift+Left',
         moveRight: isMac ? 'Cmd+Shift+Right' : 'Ctrl+Shift+Right',
         previousResponse: isMac ? 'Cmd+Left' : 'Ctrl+Left',
         nextResponse: isMac ? 'Cmd+Right' : 'Ctrl+Right',
+        scrollUp: isMac ? 'Cmd+Up' : 'Ctrl+Up',
+        scrollDown: isMac ? 'Cmd+Down' : 'Ctrl+Down',
     };
     const legacyDefaults = {
+        moveUp: isMac ? 'Alt+Up' : 'Ctrl+Up',
+        moveDown: isMac ? 'Alt+Down' : 'Ctrl+Down',
         moveLeft: isMac ? 'Alt+Left' : 'Ctrl+Left',
         moveRight: isMac ? 'Alt+Right' : 'Ctrl+Right',
         previousResponse: isMac ? 'Cmd+[' : 'Ctrl+[',
         nextResponse: isMac ? 'Cmd+]' : 'Ctrl+]',
+        scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
+        scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
     };
 
     const migrated = { ...savedKeybinds };

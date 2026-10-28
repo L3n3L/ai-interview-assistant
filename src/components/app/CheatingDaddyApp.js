@@ -569,10 +569,7 @@ export class CheatingDaddyApp extends LitElement {
 
     addNewResponse(response) {
         const latestPageStart = Math.floor(Math.max(0, this.responses.length - 1) / RESPONSE_PAGE_SIZE) * RESPONSE_PAGE_SIZE;
-        const currentPageStart =
-            this.currentResponseIndex < 0
-                ? -1
-                : Math.floor(this.currentResponseIndex / RESPONSE_PAGE_SIZE) * RESPONSE_PAGE_SIZE;
+        const currentPageStart = this.currentResponseIndex < 0 ? -1 : Math.floor(this.currentResponseIndex / RESPONSE_PAGE_SIZE) * RESPONSE_PAGE_SIZE;
         const wasOnLatest = currentPageStart === latestPageStart;
         this.responses = [...this.responses, response];
         if (wasOnLatest || this.currentResponseIndex === -1) {
@@ -727,10 +724,21 @@ export class CheatingDaddyApp extends LitElement {
             await cheatingDaddy.initializeGemini(this.selectedProfile, this.selectedLanguage);
         }
 
-        cheatingDaddy.startCapture(this.selectedScreenshotInterval, this.selectedImageQuality);
         this.responses = [];
         this.currentResponseIndex = -1;
         this.startTime = Date.now();
+
+        if (window.require) {
+            try {
+                const { ipcRenderer } = window.require('electron');
+                const phoneBridge = await ipcRenderer.invoke('phone-companion:start-session');
+                if (!phoneBridge.success) console.warn('Phone companion is unavailable:', phoneBridge.error);
+            } catch (error) {
+                console.warn('Phone companion is unavailable:', error);
+            }
+        }
+
+        cheatingDaddy.startCapture(this.selectedScreenshotInterval, this.selectedImageQuality);
         this.sessionActive = true;
         this.currentView = 'assistant';
         this._startTimer();
@@ -802,7 +810,17 @@ export class CheatingDaddyApp extends LitElement {
     handleResponseIndexChanged(e) {
         this.currentResponseIndex = e.detail.index;
         this.shouldAnimateResponse = false;
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            ipcRenderer.send('phone-companion:view-state', { currentResponseIndex: this.currentResponseIndex });
+        }
         this.requestUpdate();
+    }
+
+    handleResponseScrollChanged(e) {
+        if (!window.require) return;
+        const { ipcRenderer } = window.require('electron');
+        ipcRenderer.send('phone-companion:view-state', { scrollRatio: e.detail.scrollRatio });
     }
 
     handleOnboardingComplete() {
@@ -888,6 +906,7 @@ export class CheatingDaddyApp extends LitElement {
                         .onSendText=${msg => this.handleSendText(msg)}
                         .shouldAnimateResponse=${this.shouldAnimateResponse}
                         @response-index-changed=${this.handleResponseIndexChanged}
+                        @response-scroll-changed=${this.handleResponseScrollChanged}
                         @response-animation-complete=${() => {
                             this.shouldAnimateResponse = false;
                             this._currentResponseIsComplete = true;
