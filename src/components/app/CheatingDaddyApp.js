@@ -817,12 +817,6 @@ export class CheatingDaddyApp extends LitElement {
         this.requestUpdate();
     }
 
-    handleResponseScrollChanged(e) {
-        if (!window.require) return;
-        const { ipcRenderer } = window.require('electron');
-        ipcRenderer.send('phone-companion:view-state', { scrollRatio: e.detail.scrollRatio });
-    }
-
     handleOnboardingComplete() {
         this.currentView = 'main';
     }
@@ -906,7 +900,6 @@ export class CheatingDaddyApp extends LitElement {
                         .onSendText=${msg => this.handleSendText(msg)}
                         .shouldAnimateResponse=${this.shouldAnimateResponse}
                         @response-index-changed=${this.handleResponseIndexChanged}
-                        @response-scroll-changed=${this.handleResponseScrollChanged}
                         @response-animation-complete=${() => {
                             this.shouldAnimateResponse = false;
                             this._currentResponseIsComplete = true;

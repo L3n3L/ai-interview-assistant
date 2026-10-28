@@ -474,7 +474,6 @@ export class AssistantView extends LitElement {
         this._phonePopoverPinned = false;
         this._phonePointerInside = false;
         this._phoneCloseTimer = null;
-        this._scrollReportFrame = null;
     }
 
     getProfileNames() {
@@ -591,23 +590,6 @@ export class AssistantView extends LitElement {
         }
     }
 
-    reportScrollState() {
-        if (this._scrollReportFrame !== null) return;
-        this._scrollReportFrame = requestAnimationFrame(() => {
-            this._scrollReportFrame = null;
-            const container = this.shadowRoot.querySelector('.response-container');
-            if (!container) return;
-            const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
-            this.dispatchEvent(
-                new CustomEvent('response-scroll-changed', {
-                    bubbles: true,
-                    composed: true,
-                    detail: { scrollRatio: maxScroll ? container.scrollTop / maxScroll : 0 },
-                })
-            );
-        });
-    }
-
     handlePhonePointerEnter() {
         this._phonePointerInside = true;
         clearTimeout(this._phoneCloseTimer);
@@ -675,8 +657,14 @@ export class AssistantView extends LitElement {
 
             this.handlePreviousResponse = () => this.navigateToPreviousResponse();
             this.handleNextResponse = () => this.navigateToNextResponse();
-            this.handleScrollUp = () => this.scrollResponseUp();
-            this.handleScrollDown = () => this.scrollResponseDown();
+            this.handleScrollUp = () => {
+                this.scrollResponseUp();
+                ipcRenderer.send('phone-companion:scroll-command', 'up');
+            };
+            this.handleScrollDown = () => {
+                this.scrollResponseDown();
+                ipcRenderer.send('phone-companion:scroll-command', 'down');
+            };
 
             ipcRenderer.on('navigate-previous-response', this.handlePreviousResponse);
             ipcRenderer.on('navigate-next-response', this.handleNextResponse);
@@ -698,7 +686,6 @@ export class AssistantView extends LitElement {
             if (this.handleScrollDown) ipcRenderer.removeListener('scroll-response-down', this.handleScrollDown);
         }
         clearTimeout(this._phoneCloseTimer);
-        if (this._scrollReportFrame !== null) cancelAnimationFrame(this._scrollReportFrame);
     }
 
     async handleSendText() {
@@ -922,7 +909,6 @@ export class AssistantView extends LitElement {
             if (this.shouldAnimateResponse) {
                 this.dispatchEvent(new CustomEvent('response-animation-complete', { bubbles: true, composed: true }));
             }
-            this.reportScrollState();
         }
     }
 
@@ -932,7 +918,7 @@ export class AssistantView extends LitElement {
         const pageEnd = Math.min(pageStart + RESPONSE_PAGE_SIZE, this.responses.length);
 
         return html`
-            <div class="response-container" id="responseContainer" @scroll=${() => this.reportScrollState()}></div>
+            <div class="response-container" id="responseContainer"></div>
 
             <div class="response-nav">
                 ${

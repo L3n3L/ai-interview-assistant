@@ -34,6 +34,7 @@ app.whenReady().then(async () => {
     setupGeminiIpcHandlers(geminiSessionRef);
     setupStorageIpcHandlers();
     setupGeneralIpcHandlers();
+    phoneCompanion.startBridge().catch(error => console.error('Error starting phone companion bridge:', error));
 });
 
 app.on('window-all-closed', () => {
@@ -45,7 +46,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
     stopMacOSAudioCapture();
-    phoneCompanion.stopSession().catch(error => console.error('Error stopping phone companion:', error));
+    phoneCompanion.shutdownBridge().catch(error => console.error('Error stopping phone companion bridge:', error));
     closeQwenRealtimeSession();
     require('./utils/localai').closeLocalSession();
 });
@@ -355,8 +356,12 @@ function setupGeneralIpcHandlers() {
     ipcMain.on('phone-companion:view-state', (event, payload) => {
         if (!isLocalRenderer(event) || !payload || typeof payload !== 'object') return;
         const currentResponseIndex = Number.isInteger(payload.currentResponseIndex) ? payload.currentResponseIndex : undefined;
-        const scrollRatio = Number.isFinite(payload.scrollRatio) ? payload.scrollRatio : undefined;
-        phoneCompanion.setViewState({ currentResponseIndex, scrollRatio });
+        phoneCompanion.setViewState({ currentResponseIndex });
+    });
+
+    ipcMain.on('phone-companion:scroll-command', (event, direction) => {
+        if (!isLocalRenderer(event)) return;
+        phoneCompanion.sendPhoneScrollCommand(direction);
     });
 
     ipcMain.handle('get-app-version', async () => {

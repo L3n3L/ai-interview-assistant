@@ -12,6 +12,7 @@ const QRCode = require('qrcode');
 const execFileAsync = promisify(execFile);
 
 const RESPONSE_PAGE_SIZE = 3;
+const PHONE_PORT = 32147;
 const PHONE_PAGE_PATH = path.join(__dirname, '..', '..', 'docs', 'phone-companion-sample.html');
 const MARKED_PATH = path.join(__dirname, '..', 'assets', 'marked-4.3.0.min.js');
 const DOMPURIFY_PATH = path.join(__dirname, '..', '..', 'node_modules', 'dompurify', 'dist', 'purify.min.js');
@@ -19,17 +20,19 @@ const MAX_CLIENTS = 4;
 const WINDOWS_ADAPTER_METADATA_CACHE_MS = 5 * 60_000;
 
 let server = null;
-let sessionToken = '';
 let sessionPort = null;
 let nextEventId = 0;
 let responses = [];
 let currentResponseIndex = -1;
-let scrollRatio = 0;
+let sessionId = null;
+let sessionActive = false;
+let revision = 0;
 let refreshTimer = null;
 let lastAddressSignature = null;
 let cachedAddresses = [];
 let refreshTask = null;
-let sessionGeneration = 0;
+let bridgeGeneration = 0;
+let bridgeStartTask = null;
 let windowsAdapterMetadata = new Map();
 let windowsAdapterMetadataSignature = null;
 let windowsAdapterMetadataUpdatedAt = 0;
@@ -161,12 +164,13 @@ function getPageStart() {
 
 function getSnapshot() {
     return {
-        active: Boolean(server && server.listening),
+        sessionId,
+        active: sessionActive,
         responses,
         currentResponseIndex,
         pageStart: getPageStart(),
         pageSize: RESPONSE_PAGE_SIZE,
-        scrollRatio,
+        revision,
     };
 }
 
@@ -188,13 +192,18 @@ function broadcast(eventName, payload) {
     for (const client of clients) writeEvent(client, eventName, payload);
 }
 
+function nextStateRevision() {
+    revision += 1;
+    return { sessionId, revision };
+}
+
 function normalizeResponse(value) {
     if (typeof value !== 'string') return '';
     return value.slice(0, 500_000);
 }
 
 function publishRendererEvent(channel, data) {
-    if (!server || !server.listening) return;
+    if (!sessionActive || !server || !server.listening) return;
 
     if (channel === 'new-response') {
         const latestPageStart = Math.floor(Math.max(0, responses.length - 1) / RESPONSE_PAGE_SIZE) * RESPONSE_PAGE_SIZE;
@@ -205,6 +214,7 @@ function publishRendererEvent(channel, data) {
         if (wasOnLatest || currentResponseIndex === -1) currentResponseIndex = responses.length - 1;
 
         broadcast('response.new', {
+            ...nextStateRevision(),
             response: responses[responses.length - 1],
             responseCount: responses.length,
             currentResponseIndex,
@@ -214,12 +224,7 @@ function publishRendererEvent(channel, data) {
     }
 
     if (channel === 'update-response') {
-        if (responses.length === 0) {
-            responses = [normalizeResponse(data)];
-            currentResponseIndex = 0;
-            broadcast('response.update', { index: 0, response: responses[0] });
-            return;
-        }
+        if (responses.length === 0) return;
 
         const index = responses.length - 1;
         const previousResponse = responses[index];
@@ -228,9 +233,9 @@ function publishRendererEvent(channel, data) {
 
         responses = [...responses.slice(0, -1), nextResponse];
         if (nextResponse.startsWith(previousResponse)) {
-            broadcast('response.append', { index, text: nextResponse.slice(previousResponse.length) });
+            broadcast('response.append', { ...nextStateRevision(), index, text: nextResponse.slice(previousResponse.length) });
         } else {
-            broadcast('response.update', { index, response: nextResponse });
+            broadcast('response.update', { ...nextStateRevision(), index, response: nextResponse });
         }
         return;
     }
@@ -241,6 +246,7 @@ function publishRendererEvent(channel, data) {
         currentResponseIndex =
             responses.length === 0 ? -1 : wasCurrentResponseLatest ? responses.length - 1 : Math.min(currentResponseIndex, responses.length - 1);
         broadcast('response.discard', {
+            ...nextStateRevision(),
             responseCount: responses.length,
             currentResponseIndex,
             pageStart: getPageStart(),
@@ -249,22 +255,23 @@ function publishRendererEvent(channel, data) {
 }
 
 function setViewState(payload) {
-    if (!payload || typeof payload !== 'object') return;
+    if (!sessionActive || !payload || typeof payload !== 'object') return;
 
     if (Number.isInteger(payload.currentResponseIndex)) {
         currentResponseIndex =
             payload.currentResponseIndex < 0 || responses.length === 0 ? -1 : Math.min(payload.currentResponseIndex, responses.length - 1);
     }
 
-    if (Number.isFinite(payload.scrollRatio)) {
-        scrollRatio = Math.max(0, Math.min(1, payload.scrollRatio));
-    }
-
     broadcast('view.state', {
+        ...nextStateRevision(),
         currentResponseIndex,
         pageStart: getPageStart(),
-        scrollRatio,
     });
+}
+
+function sendPhoneScrollCommand(direction) {
+    if (!sessionActive || (direction !== 'up' && direction !== 'down')) return;
+    broadcast('phone.scroll', { ...nextStateRevision(), direction });
 }
 
 function isAllowedClientAddress(remoteAddress) {
@@ -330,11 +337,6 @@ function handleRequest(request, response) {
     }
 
     if (requestUrl.pathname === '/events') {
-        if (!sessionToken || requestUrl.searchParams.get('token') !== sessionToken) {
-            sendText(response, 403, 'Forbidden');
-            return;
-        }
-
         if (clients.size >= MAX_CLIENTS) {
             sendText(response, 429, 'Too Many Connections');
             return;
@@ -368,8 +370,7 @@ function handleRequest(request, response) {
         return;
     }
 
-    const pageMatch = requestUrl.pathname.match(/^\/p\/([A-Za-z0-9_-]{32,64})$/);
-    if (pageMatch && pageMatch[1] === sessionToken && fs.existsSync(PHONE_PAGE_PATH)) {
+    if ((requestUrl.pathname === '/' || requestUrl.pathname === '/index.html') && fs.existsSync(PHONE_PAGE_PATH)) {
         const page = fs.readFileSync(PHONE_PAGE_PATH, 'utf8');
         sendText(response, 200, page, 'text/html; charset=utf-8', {
             'Content-Security-Policy':
@@ -401,16 +402,16 @@ function notifyAddressesChanged(info) {
 function refreshConnectionInfo(force = false) {
     if (refreshTask) return refreshTask;
 
-    const refreshGeneration = sessionGeneration;
+    const refreshGeneration = bridgeGeneration;
     const task = (async () => {
         const networkAddresses = await getPrivateAddresses();
-        if (refreshGeneration !== sessionGeneration || !server?.listening) return [];
+        if (refreshGeneration !== bridgeGeneration || !server?.listening) return [];
         const signature = networkAddresses.map(entry => `${entry.name}|${entry.interfaceName}|${entry.address}`).join(';');
         if (!force && signature === lastAddressSignature) return cachedAddresses;
 
         const refreshedAddresses = await Promise.all(
             networkAddresses.map(async ({ name, interfaceName, address }) => {
-                const url = `http://${address}:${sessionPort}/p/${sessionToken}`;
+                const url = `http://${address}:${sessionPort}/`;
                 const qrDataUrl = await QRCode.toDataURL(url, {
                     errorCorrectionLevel: 'M',
                     margin: 1,
@@ -420,7 +421,7 @@ function refreshConnectionInfo(force = false) {
                 return { name, interfaceName, address, url, qrDataUrl };
             })
         );
-        if (refreshGeneration !== sessionGeneration || !server?.listening) return [];
+        if (refreshGeneration !== bridgeGeneration || !server?.listening) return [];
         lastAddressSignature = signature;
         cachedAddresses = refreshedAddresses;
 
@@ -440,47 +441,74 @@ function refreshConnectionInfo(force = false) {
     return task;
 }
 
-async function startSession() {
+async function startBridge() {
     if (server && server.listening) return getConnectionInfo();
+    if (bridgeStartTask) return bridgeStartTask;
 
-    sessionGeneration += 1;
-    sessionToken = crypto.randomBytes(24).toString('base64url');
-    nextEventId = 0;
-    responses = [];
-    currentResponseIndex = -1;
-    scrollRatio = 0;
+    const task = (async () => {
+        bridgeGeneration += 1;
+        nextEventId = 0;
+        revision = 0;
+        sessionId = null;
+        sessionActive = false;
+        responses = [];
+        currentResponseIndex = -1;
 
-    const nextServer = http.createServer(handleRequest);
-    nextServer.on('clientError', (_error, socket) => {
-        if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
-    });
-
-    try {
-        await new Promise((resolve, reject) => {
-            nextServer.once('error', reject);
-            nextServer.listen(0, '0.0.0.0', () => {
-                nextServer.removeListener('error', reject);
-                resolve();
-            });
+        const nextServer = http.createServer(handleRequest);
+        nextServer.on('clientError', (_error, socket) => {
+            if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
         });
-    } catch (error) {
-        sessionToken = '';
-        nextServer.close();
-        return { success: false, error: error.message };
+
+        try {
+            await new Promise((resolve, reject) => {
+                nextServer.once('error', reject);
+                nextServer.listen(PHONE_PORT, '0.0.0.0', () => {
+                    nextServer.removeListener('error', reject);
+                    resolve();
+                });
+            });
+        } catch (error) {
+            nextServer.close();
+            return { success: false, error: error.message };
+        }
+
+        server = nextServer;
+        sessionPort = server.address()?.port || null;
+        lastAddressSignature = null;
+        refreshTimer = setInterval(() => {
+            refreshConnectionInfo().catch(error => console.error('Error refreshing phone companion addresses:', error));
+        }, 5_000);
+        refreshConnectionInfo().catch(error => console.error('Error discovering phone companion addresses:', error));
+        return { success: true, active: true, addresses: [], error: '正在获取局域网连接地址' };
+    })();
+
+    bridgeStartTask = task;
+    try {
+        return await task;
+    } finally {
+        if (bridgeStartTask === task) bridgeStartTask = null;
+    }
+}
+
+async function startSession() {
+    if (!server || !server.listening) {
+        const bridge = await startBridge();
+        if (!bridge.success) return bridge;
     }
 
-    server = nextServer;
-    sessionPort = server.address()?.port || null;
-    lastAddressSignature = null;
-    refreshTimer = setInterval(() => {
-        refreshConnectionInfo().catch(error => console.error('Error refreshing phone companion addresses:', error));
-    }, 5_000);
-    refreshConnectionInfo().catch(error => console.error('Error discovering phone companion addresses:', error));
-    return { success: true, active: true, addresses: [], error: '正在获取局域网连接地址' };
+    sessionId = crypto.randomUUID();
+    sessionActive = true;
+    responses = [];
+    currentResponseIndex = -1;
+    revision += 1;
+    broadcast('snapshot', getSnapshot());
+
+    const info = await getConnectionInfo();
+    return { ...info, sessionId };
 }
 
 async function getConnectionInfo() {
-    if (!server || !server.listening || !sessionToken || !sessionPort) {
+    if (!server || !server.listening || !sessionPort) {
         return { success: false, active: false, error: '手机同步服务未启动' };
     }
 
@@ -493,17 +521,28 @@ async function getConnectionInfo() {
     };
 }
 
-function stopSession() {
-    if (server?.listening) broadcast('session.ended', {});
-    sessionGeneration += 1;
-    sessionToken = '';
+function endSession() {
+    if (!sessionActive) return Promise.resolve({ success: true });
+
+    sessionActive = false;
+    sessionId = null;
+    responses = [];
+    currentResponseIndex = -1;
+    revision += 1;
+    broadcast('snapshot', getSnapshot());
+    return Promise.resolve({ success: true });
+}
+
+async function shutdownBridge() {
+    if (bridgeStartTask) await bridgeStartTask;
+    endSession();
+    bridgeGeneration += 1;
     sessionPort = null;
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = null;
     lastAddressSignature = null;
     cachedAddresses = [];
     refreshTask = null;
-    resetState();
     for (const client of clients) client.end();
     clients.clear();
 
@@ -516,18 +555,13 @@ function stopSession() {
     });
 }
 
-function resetState() {
-    responses = [];
-    currentResponseIndex = -1;
-    scrollRatio = 0;
-    nextEventId = 0;
-}
-
 module.exports = {
     getConnectionInfo,
     publishRendererEvent,
-    resetState,
+    sendPhoneScrollCommand,
+    shutdownBridge,
     setViewState,
+    startBridge,
     startSession,
-    stopSession,
+    endSession,
 };

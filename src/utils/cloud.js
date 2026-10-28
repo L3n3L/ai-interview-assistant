@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
 const { BrowserWindow } = require('electron');
+const phoneCompanion = require('./phoneCompanion');
 
 let cloudWs = null;
 let isCloudConnected = false;
@@ -10,6 +11,7 @@ let audioChunkCount = 0;
 let onTurnComplete = null;
 
 function sendToRenderer(channel, data) {
+    phoneCompanion.publishRendererEvent(channel, data);
     const windows = BrowserWindow.getAllWindows();
     if (windows.length > 0) {
         windows[0].webContents.send(channel, data);

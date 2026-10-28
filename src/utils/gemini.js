@@ -2108,7 +2108,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     ipcMain.handle('close-session', async event => {
         try {
-            await phoneCompanion.stopSession();
+            await phoneCompanion.endSession();
             stopMacOSAudioCapture();
 
             if (currentProviderMode === 'qwen-realtime' || currentProviderMode === 'qwen-omni-realtime') {
