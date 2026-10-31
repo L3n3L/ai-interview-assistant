@@ -59,32 +59,6 @@ export class HelpView extends LitElement {
                 background: var(--bg-elevated);
             }
 
-            .link-row {
-                display: flex;
-                flex-wrap: wrap;
-                gap: var(--space-sm);
-            }
-
-            .link-button {
-                border: 1px solid var(--border);
-                border-radius: var(--radius-sm);
-                padding: 8px 10px;
-                background: var(--bg-elevated);
-                color: var(--text-primary);
-                font-size: var(--font-size-sm);
-                cursor: pointer;
-                transition:
-                    border-color var(--transition),
-                    color var(--transition),
-                    background var(--transition);
-            }
-
-            .link-button:hover {
-                color: var(--text-primary);
-                border-color: var(--accent);
-                background: rgba(63, 125, 229, 0.14);
-            }
-
             @media (max-width: 820px) {
                 .shortcut-grid {
                     grid-template-columns: 1fr;
@@ -94,13 +68,11 @@ export class HelpView extends LitElement {
     ];
 
     static properties = {
-        onExternalLinkClick: { type: Function },
         keybinds: { type: Object },
     };
 
     constructor() {
         super();
-        this.onExternalLinkClick = () => {};
         this.keybinds = this.getDefaultKeybinds();
         this._loadKeybinds();
     }
@@ -138,10 +110,6 @@ export class HelpView extends LitElement {
         return keybind.split('+').map(key => html`<span class="key">${key}</span>`);
     }
 
-    _open(url) {
-        this.onExternalLinkClick(url);
-    }
-
     render() {
         const shortcutRows = [
             ['窗口上移', this.keybinds.moveUp],
@@ -161,19 +129,6 @@ export class HelpView extends LitElement {
             <div class="unified-page">
                 <div class="unified-wrap">
                     <div class="page-title">帮助</div>
-
-                    <section class="surface">
-                        <div class="surface-title">支持</div>
-                        <div class="link-row">
-                            <button class="link-button" @click=${() => this._open('https://github.com/L3n3L/ai-interview-assistant')}>
-                                项目主页
-                            </button>
-                            <button class="link-button" @click=${() => this._open('https://github.com/L3n3L/ai-interview-assistant/issues')}>
-                                问题反馈
-                            </button>
-                            <button class="link-button" @click=${() => this._open('https://discord.gg/GCBdubnXfJ')}>Discord 社区</button>
-                        </div>
-                    </section>
 
                     <section class="surface">
                         <div class="surface-title">键盘快捷键</div>
