@@ -128,6 +128,8 @@ export class CheatingDaddyApp extends LitElement {
         }
 
         .sidebar {
+            position: relative;
+            z-index: 2;
             width: var(--sidebar-width);
             min-width: var(--sidebar-width);
             background: var(--bg-surface);
@@ -211,6 +213,98 @@ export class CheatingDaddyApp extends LitElement {
             padding: var(--space-sm);
             margin-top: var(--space-sm);
             -webkit-app-region: no-drag;
+        }
+
+        .sidebar-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            margin-top: var(--space-xs);
+            padding-top: var(--space-xs);
+            border-top: 1px solid var(--border);
+        }
+
+        .sidebar-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition:
+                color var(--transition),
+                background var(--transition),
+                border-color var(--transition);
+        }
+
+        .sidebar-action:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+            border-color: var(--border);
+        }
+
+        .sidebar-action:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .sidebar-action svg {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 auto;
+        }
+
+        .donation-action {
+            position: relative;
+        }
+
+        .donation-preview {
+            position: absolute;
+            z-index: 50;
+            left: 0;
+            bottom: calc(100% + 10px);
+            width: 220px;
+            aspect-ratio: 1;
+            padding: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(5px);
+            transition:
+                opacity 160ms ease,
+                transform 160ms ease,
+                visibility 160ms ease;
+        }
+
+        .donation-preview img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+
+        .donation-action:hover .donation-preview,
+        .donation-action:focus-within .donation-preview {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .donation-preview {
+                transition: none;
+                transform: none;
+            }
         }
 
         .update-btn {
@@ -1028,6 +1122,49 @@ export class CheatingDaddyApp extends LitElement {
                               `
                             : html` <div class="version-text">v${this._localVersion}</div> `
                     }
+                    <div class="sidebar-actions" role="group" aria-label="项目与赞赏">
+                        <button
+                            class="sidebar-action"
+                            type="button"
+                            aria-label="打开 AI 面试助手 GitHub 项目"
+                            title="GitHub 项目"
+                            @click=${() => this.handleExternalLinkClick('https://github.com/L3n3L/ai-interview-assistant')}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true">
+                                <path
+                                    fill="currentColor"
+                                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+                                />
+                            </svg>
+                        </button>
+                        <div class="donation-action">
+                            <button
+                                class="sidebar-action"
+                                type="button"
+                                aria-label="打赏作者一杯奶茶"
+                                aria-describedby="donation-qr-tooltip"
+                                title="打赏作者一杯奶茶"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M7 8h10v7a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4V8Z" />
+                                    <path d="M17 10h1.25a2.75 2.75 0 1 1 0 5.5H17" />
+                                    <path d="M9 4v2m3-2v2m3-2v2M9 22h6" />
+                                </svg>
+                            </button>
+                            <div class="donation-preview" id="donation-qr-tooltip" role="tooltip">
+                                <img src="assets/donation-qr.png" alt="微信收款二维码" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
