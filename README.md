@@ -1,125 +1,128 @@
-# AI面试助手
+# AI 面试助手
 
-面向中文面试、视频会议和实时沟通场景的 AI 助手。
+**面向中文语音交互、模拟面试与会话复盘的桌面 AI 助手。**
 
-它不是简单地把英文项目翻译成中文，而是围绕中文用户重新整理了模型接入、语音链路和桌面使用体验：你可以选择千问实时语音交流，也可以选择“本地语音转写 + DeepSeek 回复”的组合方案。
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![Electron](https://img.shields.io/badge/Desktop-Electron-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![中文优先](https://img.shields.io/badge/Language-简体中文-2C7A7B)](#)
+[![GitHub stars](https://img.shields.io/github/stars/L3n3L/ai-interview-assistant?style=flat)](https://github.com/L3n3L/ai-interview-assistant/stargazers)
 
-> 本项目由 **L3n3L** 维护，是基于 [sohzm/cheating-daddy](https://github.com/sohzm/cheating-daddy) 的非官方中文本地化与再品牌化衍生项目，与上游项目没有隶属或背书关系。
+![AI 面试助手产品视觉插画：中文实时语音、文本回答与手机只读同步](docs/images/readme-cover.svg)
 
-## 为什么值得试试
+AI 面试助手把实时语音、语音转写、截图分析和模型回答集中到一个桌面工作流中。你可以按需要选择千问实时语音，或选择本地 Whisper 转写后由 DeepSeek 生成文字回答；回答也可以通过同一局域网同步到手机只读页面。
 
-### 1. 千问实时语音交流
+**English:** A Chinese-first Electron desktop assistant with Qwen real-time voice, local Whisper transcription with DeepSeek responses, optional screenshot analysis, and a read-only phone companion.
 
-通过千问实时语音能力建立连续的语音会话，适合希望减少“录音 → 转写 → 再请求模型”中间环节的场景。
+> 本项目由 **L3n3L** 维护，是基于 [sohzm/cheating-daddy](https://github.com/sohzm/cheating-daddy) 的非官方衍生项目。项目已进行中文化和品牌调整，与上游没有隶属或背书关系；来源与许可证说明见 [NOTICE.md](NOTICE.md)。
 
-- 面向中文普通话交流进行配置
-- 支持连续收听和实时会话
-- 模型回答以文字呈现，方便快速浏览和复制
-- 适合中文面试、视频会议、汇报和现场问答
+[功能概览](#功能概览) · [选择语音链路](#选择适合自己的语音链路) · [快速开始](#快速开始) · [手机同步](#手机只读同步) · [数据流与隐私](#数据流与隐私) · [许可证](#许可证与来源)
 
-### 2. 本地模型转写 + DeepSeek 回复
+## 为什么做这个项目
 
-如果你更看重链路可控性，可以使用本地 Whisper 进行语音转写，再把转写文本交给 DeepSeek 生成回答：
+中文面试练习和语音沟通常常要在录音、转写、模型请求和笔记之间来回切换。AI 面试助手将这些步骤收进一个桌面应用，并让用户按质量、速度和数据处理方式选择链路：
 
-```text
-麦克风 / 系统声音
-        ↓
-本地 Whisper 语音转写
-        ↓
-中文文本
-        ↓
-DeepSeek 生成回答
-        ↓
-桌面窗口显示文字
-```
+- **中文优先**：简体中文界面、普通话设置和中文场景提示词。
+- **三条语音链路**：千问 Omni 实时语音、千问 Audio 实时语音、本地 Whisper 转写加 DeepSeek 回复。
+- **回答以文字呈现**：语音模式返回文字，便于阅读、回看和复制。
+- **按需分析屏幕**：手动触发截图分析，走单独的视觉模型请求，不混入实时音频流。
+- **手机只读镜像**：在同一局域网内用手机浏览器查看当前回答。
+- **记录可带走**：浏览历史会话，并将单场记录导出为 Markdown。
 
-语音转写阶段在本机完成，不需要把原始音频直接发送给 DeepSeek。这个组合对中文环境更友好，也方便分别调试转写质量、网络请求和模型回答速度。
+## 选择适合自己的语音链路
 
-## 核心特色
+| 模式 | 默认模型 | 音频如何处理 | 需要配置 |
+| --- | --- | --- | --- |
+| **千问 Omni 实时语音** | <code>qwen3.8-omni-flash-realtime</code> | 音频发送到千问实时接口，模型直接理解语音并返回文字 | 百炼 API Key、与 Key 同地域的 Workspace ID |
+| **千问 Audio 实时语音** | <code>qwen-audio-3.1-realtime-plus</code> | 音频发送到千问实时接口，模型直接理解语音并返回文字 | 百炼 API Key |
+| **DeepSeek + 本地 Whisper** | <code>deepseek-flash</code> + Whisper Tiny | Whisper 在本机将音频转成文字，再把转写文本发送给 DeepSeek | DeepSeek API Key；首次使用自动下载约 75 MB 的 Whisper Tiny |
 
-- **中文优先**：中文界面、中文普通话默认配置和中文面试提示词
-- **两条可选链路**：千问实时语音交流，或本地 Whisper + DeepSeek 回复
-- **国内环境友好**：优先提供更适合中文用户使用习惯的模型和 API 配置方式
-- **本地语音能力**：支持本地 Whisper 转写，并优先使用 CUDA 后端（Windows 有可用 GPU 时）
-- **文字回答为主**：回答直接显示在桌面窗口中，便于快速阅读，不强制播放语音
-- **透明桌面窗口**：始终置顶，可调节位置，并支持鼠标穿透
-- **屏幕共享友好**：采用透明叠加、内容保护和窗口隔离设计，尽量减少助手界面对共享画面的干扰
-- **完整日志**：记录音频、转写、请求和回答各阶段耗时，方便定位延迟
-- **多种场景**：面试、销售沟通、商务会议、演示汇报、谈判和考试辅助
+两种千问模式面向实时语音对话，模型版本不同，用户可按偏好的速度和回答质量选择。DeepSeek 模式把**语音转写**留在本机；生成回答仍需把转写文字发送到 DeepSeek。
 
-## 屏幕共享兼容性
+![AI 面试助手三条语音数据流示意图](docs/images/voice-data-flow.svg)
 
-AI 面试助手针对视频会议和屏幕共享场景进行了桌面窗口优化：窗口可以置顶、鼠标穿透，并启用系统内容保护能力，适合在共享屏幕时保持工作区整洁、减少窗口切换和画面干扰。
+<sub>图示为数据流说明，不是应用截图。屏幕分析是单独的手动操作：采集当前截图后发送给所选视觉模型，结果进入同一回答列表。</sub>
 
-屏幕捕获行为由操作系统、会议软件、显卡驱动和共享权限共同决定。不同软件可能使用不同的捕获方式，因此项目不承诺在所有共享模式下都完全不可见；使用前请在目标会议软件中自行验证，并遵守平台和用人单位规则。
+## 功能概览
+
+### 实时语音与文字回答
+
+选择千问实时链路后，应用把音频交给对应实时语音接口，并在桌面回答窗口显示模型返回的文字。两条千问链路彼此独立，可以在设置中切换。
+
+### 本地转写与 DeepSeek
+
+DeepSeek 模式使用本地 Whisper Tiny 多语言模型识别中文普通话，再把转写文本交给 DeepSeek 生成回答。Whisper 模型在首次使用时下载一次，之后保存在本地数据目录中。
+
+### 截图识图
+
+点击“分析屏幕”后，应用采集当前屏幕并调用视觉模型分析。千问语音模式的截图识图走独立的 <code>qwen3-vl-plus</code> 请求；它不会改变实时语音链路。DeepSeek 模式下，截图和文字输入会发送给 DeepSeek。
+
+### 三条一组的回答分页
+
+回答窗口每页显示最近所在组的最多三条回答。使用 Ctrl + ← / →（macOS：⌘ + ← / →）切换前后回答组。Ctrl + ↑ / ↓（macOS：⌘ + ↑ / ↓）滚动回答窗口；连接手机时，也会向手机页面发送对应方向的滚动指令。
+
+### 历史记录与导出
+
+历史页面可以查看单场会话的对话详情，并通过“导出面试记录”将该场记录保存为 Markdown 文件，方便个人复盘和归档。
 
 ## 快速开始
 
-```bash
-npm install
+### 运行源码
+
+当前 GitHub 仓库**没有公开的预编译 Release 安装包**。有 Node.js 和 npm 的用户可以从源码启动：
+
+~~~bash
+git clone https://github.com/L3n3L/ai-interview-assistant.git
+cd ai-interview-assistant
+npm ci
 npm start
-```
+~~~
 
-启动后，在设置中选择使用方式并填写对应 API Key：
+### 配置模型
 
-- **千问实时模式**：填写千问实时 API Key
-- **DeepSeek 模式**：使用本地 Whisper 转写，并填写 DeepSeek API Key
-- **本地 AI 模式**：按提示下载并配置本地模型
+1. 在应用中选择一种语音模式。
+2. 在对应服务平台创建 API Key，并粘贴到应用设置中。
+3. 使用千问 Omni 时，再填写与 API Key 同地域的 Workspace ID。
+4. 选择音频来源和中文普通话设置，然后开始会话。
 
-首次使用建议先在设置中选择“中文普通话（中国）”，再选择音频模式。API Key 保存在本地配置目录，不会写入 Git 仓库。
+- [阿里云百炼控制台](https://bailian.console.aliyun.com/)：用于千问实时语音与视觉模型。
+- [DeepSeek API Keys](https://platform.deepseek.com/api_keys)：用于 DeepSeek 回复。
 
-## 两种工作模式
+API Key 保存在本地应用配置中。请勿把真实 Key、日志或个人会话记录提交到 GitHub。
 
-### 千问实时模式
+## 手机只读同步
 
-```text
-音频输入 → 千问实时语音会话 → 文本回答 → AI面试助手窗口
-```
+电脑和手机连接到同一局域网后，在回答窗口底部悬停或点击手机同步图标，即可查看连接二维码和地址。手机浏览器打开后会实时显示当前回答，并跟随电脑切换回答分页；手机页面只展示回答内容和主题切换，不提供控制电脑的操作。
 
-这条链路适合希望直接进行连续语音交流、减少中间转写步骤的用户。
+手机同步只镜像回答文字，不传输音频、截图或 API Key。切换 Wi-Fi 或 USB 网络共享后，请使用应用显示的对应网络地址。
 
-### DeepSeek 模式
+## 数据流与隐私
 
-```text
-音频输入 → 本地 Whisper → 中文转写文本 → DeepSeek → 文本回答
-```
+| 操作 | 发送内容 | 目的地 |
+| --- | --- | --- |
+| 千问实时语音 | 实时音频 | 阿里云百炼对应的实时语音模型 |
+| DeepSeek 语音模式 | 本地 Whisper 生成的转写文字 | DeepSeek API |
+| 屏幕分析 | 用户手动触发时采集的屏幕截图 | 当前模式配置的视觉模型 |
+| 手机同步 | 当前会话的回答文字与分页状态 | 同一局域网中的手机浏览器 |
 
-这条链路适合希望把语音识别留在本地，并使用 DeepSeek 进行中文回答的用户。截图分析和文字输入也可以继续使用 DeepSeek。
+DeepSeek 语音模式的 Whisper 转写在本地执行；千问实时语音模式会把音频发送给千问服务。截图只在用户主动触发分析时采集。模型服务提供方的数据处理方式受其各自的服务条款和隐私政策约束。
 
-## 使用方式
+配置、凭据、历史记录和运行日志保存在本地数据目录。Windows 用户可以在启动应用前用 <code>CHEATING_DADDY_DATA_DIR</code> 指定目录，例如：
 
-1. 启动应用并填写对应模型的 API Key。
-2. 选择中文普通话、音频模式和使用场景。
-3. 点击“开始会话”。
-4. 根据需要开启屏幕分析或语音输入。
-5. AI 回答会显示在桌面窗口中。
+~~~powershell
+$env:CHEATING_DADDY_DATA_DIR = 'D:/AI-Interview-Assistant/Data'
+npm start
+~~~
 
-请遵守面试平台、会议软件和用人单位的相关规定，并将本项目用于获得允许的辅助、练习和研究场景。
+当前 Windows 源码默认数据目录仍在 [src/storage.js](src/storage.js) 中指定；向其他用户分发前，建议先检查并按目标环境设置。
 
-## 快捷键
+## 使用边界
 
-- **上一组 / 上一条回复**：`Ctrl/Cmd + 左箭头`
-- **下一组 / 下一条回复**：`Ctrl/Cmd + 右箭头`
-- **窗口上移 / 下移**：`Ctrl/Cmd + 上下箭头`
-- **窗口左移 / 右移**：`Ctrl/Cmd + Shift + 左右箭头`
-- **切换鼠标穿透**：`Ctrl/Cmd + M`
-- **隐藏 / 显示窗口**：Windows `Ctrl + \`，macOS `Cmd + \`
-- **发送文字消息**：`Enter`
+请将本项目用于模拟面试、学习复盘，或已获得明确许可的辅助场景。参加招聘面试、考试或其他测评时，请遵守主办方关于 AI 和外部辅助工具的规则；不要在明确禁止的场景中隐瞒使用。窗口显示和屏幕捕获结果会因操作系统、驱动和会议软件而不同，本项目不保证在屏幕共享中不可见。
 
-当回复数量达到 3 条以上时，界面会按每组 3 条进行翻页，左右快捷键每次切换一组。
+## 反馈与参与
 
-## Windows 本地数据位置
+遇到问题或有改进建议，请到 [GitHub Issues](https://github.com/L3n3L/ai-interview-assistant/issues) 提交，并附上系统版本、所选模式和相关错误日志。提交前请移除 API Key、个人信息和会话内容。
 
-默认情况下，Windows 的配置、模型、历史记录和日志保存在：
+## 许可证与来源
 
-```text
-E:\vsws\家庭工具\cheating-daddy-data
-```
-
-如需修改位置，可在启动前设置 `CHEATING_DADDY_DATA_DIR` 环境变量。API Key、日志和本地会话数据均不应提交到 Git 仓库。
-
-## 许可证与来源说明
-
-本项目使用 **GPL-3.0** 许可证。由于它基于上游项目进行修改和再发布，请阅读 [NOTICE.md](NOTICE.md) 了解来源、版权和衍生项目义务。
-
-本项目名称为 **AI面试助手**，不代表上游项目，也不使用上游项目的品牌背书。
+本项目以 **GPL-3.0** 发布。它是基于 [sohzm/cheating-daddy](https://github.com/sohzm/cheating-daddy) 修改和再发布的衍生项目；分发时请保留 GPL-3.0 许可证及上游来源说明。详细信息见 [LICENSE](LICENSE) 和 [NOTICE.md](NOTICE.md)。

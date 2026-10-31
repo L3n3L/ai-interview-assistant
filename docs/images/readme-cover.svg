@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 560" role="img" aria-labelledby="title desc">
+  <title id="title">AI 面试助手产品视觉插画</title>
+  <desc id="desc">展示中文实时语音、Whisper 与 DeepSeek 语音链路，以及桌面和手机文字回答的概念图。</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#091322"/>
+      <stop offset="1" stop-color="#101e32"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#74e0c2"/>
+      <stop offset="1" stop-color="#6da8ff"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#18283d"/>
+      <stop offset="1" stop-color="#101b2b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="560" rx="28" fill="url(#background)"/>
+  <circle cx="1270" cy="60" r="220" fill="#407b94" opacity=".12"/>
+  <circle cx="1030" cy="490" r="240" fill="#5360aa" opacity=".1"/>
+  <path d="M0 430C240 350 350 570 620 500" fill="none" stroke="#74e0c2" stroke-opacity=".08" stroke-width="2"/>
+  <path d="M0 458C240 378 350 598 620 528" fill="none" stroke="#74e0c2" stroke-opacity=".06" stroke-width="2"/>
+
+  <g font-family="Inter, 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif">
+    <rect x="76" y="78" width="280" height="38" rx="19" fill="#183344" stroke="#2b5963"/>
+    <circle cx="98" cy="97" r="5" fill="#74e0c2"/>
+    <text x="114" y="103" fill="#bdeee0" font-size="15" letter-spacing="1.6">CHINESE-FIRST DESKTOP AI</text>
+
+    <text x="72" y="205" fill="#f4f7fb" font-size="66" font-weight="700">AI 面试助手</text>
+    <text x="76" y="260" fill="#c3ceda" font-size="25">为中文实时语音与面试练习设计</text>
+    <text x="76" y="302" fill="#8fa1b6" font-size="18">选择语音链路，获取清晰的文字回答，</text>
+    <text x="76" y="331" fill="#8fa1b6" font-size="18">并把当前回答同步到手机只读页面。</text>
+
+    <g transform="translate(76 382)">
+      <rect width="176" height="42" rx="21" fill="#172d3a" stroke="#2e5b5a"/>
+      <text x="88" y="27" fill="#bdeee0" font-size="15" text-anchor="middle">千问实时语音</text>
+      <rect x="190" width="198" height="42" rx="21" fill="#1d2940" stroke="#354a73"/>
+      <text x="289" y="27" fill="#c7d5ff" font-size="15" text-anchor="middle">Whisper + DeepSeek</text>
+      <rect x="402" width="162" height="42" rx="21" fill="#252642" stroke="#48456e"/>
+      <text x="483" y="27" fill="#d8d2ff" font-size="15" text-anchor="middle">手机只读同步</text>
+    </g>
+
+    <text x="77" y="490" fill="#71849a" font-size="14">实时语音 · 本地转写 · 截图识图 · 会话导出</text>
+  </g>
+
+  <g transform="translate(724 55)">
+    <rect x="0" y="0" width="622" height="448" rx="24" fill="url(#card)" stroke="#34465c" stroke-width="1.5"/>
+    <rect x="24" y="24" width="574" height="54" rx="14" fill="#1c2c41"/>
+    <circle cx="48" cy="51" r="5" fill="#74e0c2"/>
+    <text x="66" y="57" fill="#e6edf5" font-size="16" font-weight="600" font-family="Inter, 'Microsoft YaHei', sans-serif">语音会话</text>
+    <text x="566" y="57" fill="#91a5ba" font-size="13" text-anchor="end" font-family="Inter, 'Microsoft YaHei', sans-serif">文字回答</text>
+
+    <rect x="27" y="102" width="264" height="115" rx="17" fill="#152b35" stroke="#2b5c58"/>
+    <circle cx="54" cy="131" r="10" fill="#74e0c2" opacity=".2"/>
+    <path d="M54 124v14m-6-7a6 6 0 0 0 12 0m-6 8v5m-5 0h10" fill="none" stroke="#8be6cc" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="77" y="136" fill="#d6efe8" font-size="15" font-weight="600" font-family="Inter, 'Microsoft YaHei', sans-serif">实时语音输入</text>
+    <g fill="url(#accent)" opacity=".9">
+      <rect x="49" y="169" width="5" height="17" rx="2.5"/>
+      <rect x="61" y="160" width="5" height="35" rx="2.5"/>
+      <rect x="73" y="166" width="5" height="23" rx="2.5"/>
+      <rect x="85" y="154" width="5" height="47" rx="2.5"/>
+      <rect x="97" y="163" width="5" height="29" rx="2.5"/>
+      <rect x="109" y="158" width="5" height="39" rx="2.5"/>
+      <rect x="121" y="168" width="5" height="19" rx="2.5"/>
+      <rect x="133" y="161" width="5" height="33" rx="2.5"/>
+      <rect x="145" y="155" width="5" height="45" rx="2.5"/>
+      <rect x="157" y="166" width="5" height="23" rx="2.5"/>
+      <rect x="169" y="159" width="5" height="37" rx="2.5"/>
+      <rect x="181" y="164" width="5" height="27" rx="2.5"/>
+      <rect x="193" y="152" width="5" height="51" rx="2.5"/>
+      <rect x="205" y="162" width="5" height="31" rx="2.5"/>
+      <rect x="217" y="168" width="5" height="19" rx="2.5"/>
+      <rect x="229" y="157" width="5" height="41" rx="2.5"/>
+      <rect x="241" y="165" width="5" height="25" rx="2.5"/>
+      <rect x="253" y="160" width="5" height="35" rx="2.5"/>
+    </g>
+
+    <rect x="310" y="102" width="286" height="115" rx="17" fill="#20233d" stroke="#464778"/>
+    <text x="334" y="135" fill="#c9c8f5" font-size="14" font-family="Inter, 'Microsoft YaHei', sans-serif">可选回复链路</text>
+    <text x="334" y="164" fill="#f2f1ff" font-size="19" font-weight="600" font-family="Inter, 'Microsoft YaHei', sans-serif">实时模型 / 本地转写</text>
+    <text x="334" y="190" fill="#999dbd" font-size="13" font-family="Inter, 'Microsoft YaHei', sans-serif">按需要选择速度、质量与处理方式</text>
+
+    <text x="29" y="255" fill="#9baec2" font-size="13" letter-spacing="1.2" font-family="Inter, 'Microsoft YaHei', sans-serif">RESPONSE PREVIEW</text>
+    <rect x="27" y="274" width="569" height="108" rx="17" fill="#17263a" stroke="#2d4159"/>
+    <rect x="48" y="296" width="4" height="62" rx="2" fill="#74e0c2"/>
+    <text x="69" y="315" fill="#e8eef5" font-size="16" font-family="Inter, 'Microsoft YaHei', sans-serif">文字回答集中呈现</text>
+    <text x="69" y="343" fill="#9dafc1" font-size="14" font-family="Inter, 'Microsoft YaHei', sans-serif">三条一组浏览 · 历史记录 · 单场 Markdown 导出</text>
+    <text x="69" y="366" fill="#72869d" font-size="12" font-family="Inter, 'Microsoft YaHei', sans-serif">概念示意图，并非应用截图</text>
+
+    <g transform="translate(436 399)">
+      <rect x="0" y="0" width="160" height="28" rx="14" fill="#183344"/>
+      <circle cx="17" cy="14" r="4" fill="#74e0c2"/>
+      <text x="31" y="19" fill="#bdeee0" font-size="12" font-family="Inter, 'Microsoft YaHei', sans-serif">桌面 + 手机镜像</text>
+    </g>
+  </g>
+</svg>
