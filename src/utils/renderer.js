@@ -1,6 +1,5 @@
 // renderer.js
 const { ipcRenderer } = require('electron');
-const { profilePrompts: defaultQwenProfilePrompts } = require('./prompts');
 
 let mediaStream = null;
 let screenshotInterval = null;
@@ -12,6 +11,8 @@ const SAMPLE_RATE = 24000;
 const AUDIO_CHUNK_DURATION = 0.1; // seconds
 const BUFFER_SIZE = 4096; // Increased buffer size for smoother audio
 let activeAudioChunkDuration = AUDIO_CHUNK_DURATION;
+const QWEN_PROMPT_PROFILES = ['interview', 'sales', 'meeting', 'presentation', 'negotiation', 'exam'];
+const QWEN_PROMPT_FIELDS = ['intro', 'formatRequirements', 'searchUsage', 'content', 'outputInstructions'];
 
 let hiddenVideo = null;
 let offscreenCanvas = null;
@@ -231,13 +232,13 @@ function resolveActiveQwenPromptScheme(prefs, profile) {
 
     const scheme = activeMatches[0];
     const profileCatalog = scheme?.prompts?.profilePrompts;
-    const hasCompleteCatalog = Object.entries(defaultQwenProfilePrompts).every(([profileName, defaultParts]) => {
+    const hasCompleteCatalog = QWEN_PROMPT_PROFILES.every(profileName => {
         const profilePrompt = profileCatalog?.[profileName];
-        return profilePrompt && Object.keys(defaultParts).every(field => typeof profilePrompt[field] === 'string');
+        return profilePrompt && QWEN_PROMPT_FIELDS.every(field => typeof profilePrompt[field] === 'string');
     });
 
     if (
-        !defaultQwenProfilePrompts[profile] ||
+        !QWEN_PROMPT_PROFILES.includes(profile) ||
         !scheme ||
         !hasCompleteCatalog ||
         typeof scheme.prompts.customPrompt !== 'string' ||
