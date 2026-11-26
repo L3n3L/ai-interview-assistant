@@ -769,23 +769,35 @@ export class CheatingDaddyApp extends LitElement {
                 return;
             }
         } else if (providerMode === 'qwen-realtime') {
+            const qwenApiKey = await cheatingDaddy.storage.getQwenRealtimeApiKey();
+            if (!qwenApiKey || !qwenApiKey.trim()) {
+                const mainView = this.shadowRoot.querySelector('main-view');
+                if (mainView && mainView.triggerApiKeyError) {
+                    mainView.triggerApiKeyError();
+                }
+                return;
+            }
+
             const success = await cheatingDaddy.initializeQwenRealtime(this.selectedProfile, this.selectedLanguage);
-            if (!success) {
-                const mainView = this.shadowRoot.querySelector('main-view');
-                if (mainView && mainView.triggerApiKeyError) {
-                    mainView.triggerApiKeyError();
-                }
-                return;
-            }
+            if (!success) return;
         } else if (providerMode === 'qwen-omni-realtime') {
-            const success = await cheatingDaddy.initializeQwenOmniRealtime(this.selectedProfile, this.selectedLanguage);
-            if (!success) {
+            const qwenApiKey = await cheatingDaddy.storage.getQwenRealtimeApiKey();
+            if (!qwenApiKey || !qwenApiKey.trim()) {
                 const mainView = this.shadowRoot.querySelector('main-view');
                 if (mainView && mainView.triggerApiKeyError) {
                     mainView.triggerApiKeyError();
                 }
                 return;
             }
+
+            const config = await cheatingDaddy.storage.getConfig();
+            if (!String(config.qwenWorkspaceId || '').trim()) {
+                this.setStatus('缺少 Qwen Workspace ID，请在设置中填写后再开始。');
+                return;
+            }
+
+            const success = await cheatingDaddy.initializeQwenOmniRealtime(this.selectedProfile, this.selectedLanguage);
+            if (!success) return;
         } else if (providerMode === 'deepseek') {
             const creds = await cheatingDaddy.storage.getCredentials();
             if (!creds.deepseekApiKey || creds.deepseekApiKey.trim() === '') {

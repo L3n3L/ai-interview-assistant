@@ -1,5 +1,6 @@
 // renderer.js
 const { ipcRenderer } = require('electron');
+const { profilePrompts: defaultQwenProfilePrompts } = require('./prompts');
 
 let mediaStream = null;
 let screenshotInterval = null;
@@ -222,25 +223,58 @@ async function initializeDeepSeek(profile = 'interview', language = 'cmn-CN') {
     return false;
 }
 
+function resolveActiveQwenPromptScheme(prefs, profile) {
+    if (!prefs?.activeQwenPromptSchemeId || !Array.isArray(prefs.qwenPromptSchemes)) return null;
+
+    const activeMatches = prefs.qwenPromptSchemes.filter(item => item?.id === prefs.activeQwenPromptSchemeId);
+    if (activeMatches.length !== 1) return null;
+
+    const scheme = activeMatches[0];
+    const profileCatalog = scheme?.prompts?.profilePrompts;
+    const hasCompleteCatalog = Object.entries(defaultQwenProfilePrompts).every(([profileName, defaultParts]) => {
+        const profilePrompt = profileCatalog?.[profileName];
+        return profilePrompt && Object.keys(defaultParts).every(field => typeof profilePrompt[field] === 'string');
+    });
+
+    if (
+        !defaultQwenProfilePrompts[profile] ||
+        !scheme ||
+        !hasCompleteCatalog ||
+        typeof scheme.prompts.customPrompt !== 'string' ||
+        typeof scheme.prompts.qwenChineseInstruction !== 'string'
+    ) {
+        return null;
+    }
+
+    return scheme;
+}
+
+function reportInvalidQwenPromptScheme() {
+    console.error('[Qwen] Active prompt scheme is missing or incomplete; refusing to start with fallback prompts.');
+    cheatingDaddy.setStatus('千问提示词方案无效，已停止启动。请在 AI 定制中重新选择方案。');
+}
+
 async function initializeQwenRealtime(profile = 'interview', language = 'cmn-CN') {
     const apiKey = await storage.getQwenRealtimeApiKey();
     if (!apiKey || !apiKey.trim()) {
-        cheatingDaddy.setStatus('error');
+        cheatingDaddy.setStatus('缺少千问实时语音 API Key。');
         return false;
     }
 
     const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
     const model = config.qwenRealtimeModel || 'qwen-audio-3.1-realtime-plus';
-    const promptScheme = prefs.qwenPromptSchemes?.find(scheme => scheme.id === prefs.activeQwenPromptSchemeId) || null;
-    const customPrompt = promptScheme?.prompts?.customPrompt ?? prefs.customPrompt ?? '';
-    const success = await ipcRenderer.invoke('initialize-qwen-realtime', apiKey, model, customPrompt, profile, language, promptScheme);
+    const promptScheme = resolveActiveQwenPromptScheme(prefs, profile);
+    if (!promptScheme) {
+        reportInvalidQwenPromptScheme();
+        return false;
+    }
+    const success = await ipcRenderer.invoke('initialize-qwen-realtime', apiKey, model, profile, language, promptScheme.id);
 
     if (success) {
         cheatingDaddy.setStatus('Qwen 实时已连接');
         return true;
     }
 
-    cheatingDaddy.setStatus('error');
     return false;
 }
 
@@ -249,31 +283,24 @@ async function initializeQwenOmniRealtime(profile = 'interview', language = 'cmn
     const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
     const model = config.qwenOmniRealtimeModel || 'qwen3.8-omni-flash-realtime';
     const workspaceId = String(config.qwenWorkspaceId || '').trim();
-    const promptScheme = prefs.qwenPromptSchemes?.find(scheme => scheme.id === prefs.activeQwenPromptSchemeId) || null;
-    const customPrompt = promptScheme?.prompts?.customPrompt ?? prefs.customPrompt ?? '';
 
     if (!apiKey || !apiKey.trim() || !workspaceId) {
-        cheatingDaddy.setStatus('error');
+        cheatingDaddy.setStatus(!apiKey || !apiKey.trim() ? '缺少千问实时语音 API Key。' : '缺少 Qwen Workspace ID，请在设置中填写后再开始。');
         return false;
     }
 
-    const success = await ipcRenderer.invoke(
-        'initialize-qwen-omni-realtime',
-        apiKey,
-        model,
-        workspaceId,
-        customPrompt,
-        profile,
-        language,
-        promptScheme
-    );
+    const promptScheme = resolveActiveQwenPromptScheme(prefs, profile);
+    if (!promptScheme) {
+        reportInvalidQwenPromptScheme();
+        return false;
+    }
+    const success = await ipcRenderer.invoke('initialize-qwen-omni-realtime', apiKey, model, workspaceId, profile, language, promptScheme.id);
 
     if (success) {
         cheatingDaddy.setStatus('Qwen Omni 实时已连接');
         return true;
     }
 
-    cheatingDaddy.setStatus('error');
     return false;
 }
 

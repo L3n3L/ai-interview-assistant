@@ -22,6 +22,15 @@ function cloneJson(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
+function isCompletePromptSet(prompts) {
+    return (
+        Boolean(prompts?.profilePrompts) &&
+        PROFILES.every(({ value }) => PROMPT_FIELDS.every(({ key }) => typeof prompts.profilePrompts?.[value]?.[key] === 'string')) &&
+        typeof prompts.customPrompt === 'string' &&
+        typeof prompts.qwenChineseInstruction === 'string'
+    );
+}
+
 export class AICustomizeView extends LitElement {
     static styles = [
         unifiedPageStyles,
@@ -111,6 +120,10 @@ export class AICustomizeView extends LitElement {
             .scheme-button.primary:hover:not(:disabled) {
                 border-color: var(--accent-hover);
                 background: var(--accent-hover);
+            }
+            .scheme-button.danger {
+                border-color: var(--danger);
+                color: var(--danger);
             }
             .scheme-button:focus-visible {
                 outline: 2px solid var(--accent);
@@ -230,6 +243,12 @@ export class AICustomizeView extends LitElement {
 
     updated(changedProperties) {
         if (changedProperties.has('_draftPrompts')) this._resizePromptEditors();
+        if (changedProperties.has('_selectedSchemeId') || changedProperties.has('_promptSchemes')) {
+            const schemeSelect = this.renderRoot.querySelector('.scheme-controls select');
+            if (schemeSelect && this._selectedSchemeId && schemeSelect.value !== this._selectedSchemeId) {
+                schemeSelect.value = this._selectedSchemeId;
+            }
+        }
     }
 
     static properties = {
@@ -274,12 +293,21 @@ export class AICustomizeView extends LitElement {
         try {
             const prefs = await cheatingDaddy.storage.getPreferences();
             const schemes = Array.isArray(prefs.qwenPromptSchemes) ? prefs.qwenPromptSchemes : [];
-            const activeScheme = schemes.find(scheme => scheme.id === prefs.activeQwenPromptSchemeId) || schemes[schemes.length - 1];
+            const activeMatches = schemes.filter(scheme => scheme?.id === prefs.activeQwenPromptSchemeId);
+            const activeScheme = activeMatches.length === 1 ? activeMatches[0] : null;
 
             this._promptSchemes = schemes;
             this._activeSchemeId = activeScheme?.id || '';
             this._selectedSchemeId = activeScheme?.id || '';
             this._draftPrompts = activeScheme?.prompts ? cloneJson(activeScheme.prompts) : null;
+            this._statusMessage = !activeScheme
+                ? activeMatches.length > 1
+                    ? '当前方案 ID 重复，无法确定唯一方案；未加载任何方案内容。请检查方案数据。'
+                    : '当前方案 ID 无效，未加载其他方案。请从方案菜单中明确选择一套方案。'
+                : isCompletePromptSet(activeScheme.prompts)
+                  ? ''
+                  : '当前方案内容不完整；千问不会使用其他方案代替。请补齐提示词后保存。';
+            this._statusType = this._statusMessage ? 'error' : '';
             this._loading = false;
             this.requestUpdate();
         } catch (error) {
@@ -305,8 +333,14 @@ export class AICustomizeView extends LitElement {
             return;
         }
 
-        const scheme = this._promptSchemes.find(item => item.id === schemeId);
-        if (!scheme) return;
+        const schemeMatches = this._promptSchemes.filter(item => item?.id === schemeId);
+        if (schemeMatches.length !== 1) {
+            this._selectedSchemeId = this._activeSchemeId;
+            this._statusMessage = '所选方案 ID 无效或重复，无法确定唯一方案；未切换当前方案。';
+            this._statusType = 'error';
+            return;
+        }
+        const scheme = schemeMatches[0];
 
         this._selectedSchemeId = schemeId;
         this._saving = true;
@@ -317,8 +351,10 @@ export class AICustomizeView extends LitElement {
             this._activeSchemeId = scheme.id;
             this._draftPrompts = cloneJson(scheme.prompts);
             this._dirty = false;
-            this._statusMessage = `已切换到「${scheme.name}」。`;
-            this._statusType = 'success';
+            this._statusMessage = isCompletePromptSet(scheme.prompts)
+                ? `已切换到「${scheme.name}」。`
+                : `已切换到「${scheme.name}」，但提示词内容不完整；千问不会使用其他方案代替。请补齐后保存。`;
+            this._statusType = isCompletePromptSet(scheme.prompts) ? 'success' : 'error';
         } catch (error) {
             this._selectedSchemeId = this._activeSchemeId;
             this._statusMessage = `切换方案失败：${error.message}`;
@@ -431,8 +467,8 @@ export class AICustomizeView extends LitElement {
             this._statusType = 'error';
             return;
         }
-        if (!this._draftPrompts?.profilePrompts || typeof this._draftPrompts.customPrompt !== 'string') {
-            this._statusMessage = '当前提示词内容无效，无法保存。';
+        if (!isCompletePromptSet(this._draftPrompts)) {
+            this._statusMessage = '提示词方案内容不完整；请补齐六个场景的五个字段、自定义指令和中文回答要求后再保存。';
             this._statusType = 'error';
             return;
         }
@@ -493,8 +529,8 @@ export class AICustomizeView extends LitElement {
             return;
         }
         const promptsToSave = importedPrompts || this._pendingImportedPrompts || this._draftPrompts;
-        if (!promptsToSave?.profilePrompts || typeof promptsToSave.customPrompt !== 'string') {
-            this._statusMessage = '当前提示词内容无效，无法新增方案。';
+        if (!isCompletePromptSet(promptsToSave)) {
+            this._statusMessage = '提示词方案内容不完整；请补齐六个场景的五个字段、自定义指令和中文回答要求后再新增。';
             this._statusType = 'error';
             return;
         }
@@ -503,21 +539,26 @@ export class AICustomizeView extends LitElement {
         try {
             const prefs = await cheatingDaddy.storage.getPreferences();
             const createdAt = Date.now();
+            const schemes = Array.isArray(prefs.qwenPromptSchemes) ? prefs.qwenPromptSchemes : [];
+            let schemeId;
+            do {
+                schemeId = `qwen-scheme-${createdAt}-${Math.random().toString(36).slice(2, 8)}`;
+            } while (schemes.some(existing => existing?.id === schemeId));
             const scheme = {
-                id: `qwen-scheme-${createdAt}-${Math.random().toString(36).slice(2, 8)}`,
+                id: schemeId,
                 name,
                 createdAt,
                 updatedAt: createdAt,
                 prompts: cloneJson(promptsToSave),
             };
-            const schemes = [...(Array.isArray(prefs.qwenPromptSchemes) ? prefs.qwenPromptSchemes : []), scheme];
+            const nextSchemes = [...schemes, scheme];
             const result = await cheatingDaddy.storage.setPreferences({
-                qwenPromptSchemes: schemes,
+                qwenPromptSchemes: nextSchemes,
                 activeQwenPromptSchemeId: scheme.id,
             });
             if (result?.success === false) throw new Error(result.error || '新增方案失败');
 
-            this._promptSchemes = schemes;
+            this._promptSchemes = nextSchemes;
             this._activeSchemeId = scheme.id;
             this._selectedSchemeId = scheme.id;
             this._draftPrompts = cloneJson(scheme.prompts);
@@ -529,6 +570,59 @@ export class AICustomizeView extends LitElement {
             this._statusType = 'success';
         } catch (error) {
             this._statusMessage = `新增方案失败：${error.message}`;
+            this._statusType = 'error';
+        } finally {
+            this._saving = false;
+        }
+    }
+
+    async _deleteCurrentScheme() {
+        if (this._saving || this._fileBusy || this._pendingImportedPrompts) return;
+
+        const currentScheme = this._promptSchemes.find(scheme => scheme.id === this._activeSchemeId);
+        if (!currentScheme) {
+            this._statusMessage = '当前方案不存在，无法删除。';
+            this._statusType = 'error';
+            return;
+        }
+        if (currentScheme.isDefault) {
+            this._statusMessage = '默认方案不能删除。';
+            this._statusType = 'error';
+            return;
+        }
+
+        const confirmMessage = `确定删除方案「${currentScheme.name}」吗？删除后无法恢复，并会切回「默认方案」。${this._dirty ? '\n当前未保存的修改也会丢失。' : ''}`;
+        if (!window.confirm(confirmMessage)) return;
+
+        this._saving = true;
+        try {
+            const prefs = await cheatingDaddy.storage.getPreferences();
+            const schemes = Array.isArray(prefs.qwenPromptSchemes) ? prefs.qwenPromptSchemes : [];
+            const schemeToDelete = schemes.find(scheme => scheme.id === this._activeSchemeId);
+            const defaultScheme = schemes.find(scheme => scheme.isDefault);
+            if (!schemeToDelete) throw new Error('当前方案不存在，请重新打开设置页');
+            if (schemeToDelete.isDefault) throw new Error('默认方案不能删除');
+            if (!defaultScheme?.prompts?.profilePrompts) throw new Error('找不到有效的默认方案，未执行删除');
+
+            const nextSchemes = schemes.filter(scheme => scheme.id !== schemeToDelete.id);
+            const result = await cheatingDaddy.storage.setPreferences({
+                qwenPromptSchemes: nextSchemes,
+                activeQwenPromptSchemeId: defaultScheme.id,
+            });
+            if (result?.success === false) throw new Error(result.error || '删除方案失败');
+
+            this._promptSchemes = nextSchemes;
+            this._activeSchemeId = defaultScheme.id;
+            this._selectedSchemeId = defaultScheme.id;
+            this._draftPrompts = cloneJson(defaultScheme.prompts);
+            this._newSchemeName = '';
+            this._showNewSchemeForm = false;
+            this._pendingImportedPrompts = null;
+            this._dirty = false;
+            this._statusMessage = `已删除「${schemeToDelete.name}」，当前方案已切回「默认方案」。`;
+            this._statusType = 'success';
+        } catch (error) {
+            this._statusMessage = `删除方案失败：${error.message}`;
             this._statusType = 'error';
         } finally {
             this._saving = false;
@@ -555,6 +649,7 @@ export class AICustomizeView extends LitElement {
     render() {
         const profilePrompts = this._draftPrompts?.profilePrompts;
         const profilePrompt = profilePrompts?.[this.selectedProfile];
+        const activeScheme = this._promptSchemes.find(scheme => scheme.id === this._activeSchemeId);
 
         return html`
             <div class="unified-page">
@@ -576,6 +671,7 @@ export class AICustomizeView extends LitElement {
                                               ?disabled=${this._saving || this._fileBusy}
                                               @change=${this._handleSchemeSelect}
                                           >
+                                              ${this._selectedSchemeId ? '' : html`<option value="" disabled>当前方案无效，请重新选择</option>`}
                                               ${this._promptSchemes.map(scheme => html`<option value=${scheme.id}>${scheme.name}</option>`)}
                                           </select>
                                           <div class="scheme-actions">
@@ -601,6 +697,22 @@ export class AICustomizeView extends LitElement {
                                                   @click=${this._toggleNewSchemeForm}
                                               >
                                                   ${this._showNewSchemeForm ? '收起' : '新增方案'}
+                                              </button>
+                                              <button
+                                                  class="scheme-button danger"
+                                                  title=${activeScheme?.isDefault ? '默认方案不能删除' : '删除当前方案并切回默认方案'}
+                                                  ?disabled=${
+                                                      this._saving ||
+                                                      this._fileBusy ||
+                                                      this._pendingImportedPrompts ||
+                                                      this._showNewSchemeForm ||
+                                                      this._selectedSchemeId !== this._activeSchemeId ||
+                                                      !activeScheme ||
+                                                      activeScheme.isDefault
+                                                  }
+                                                  @click=${this._deleteCurrentScheme}
+                                              >
+                                                  删除该方案
                                               </button>
                                           </div>
                                       </div>
@@ -656,61 +768,67 @@ export class AICustomizeView extends LitElement {
                                   </div>
 
                                   <section class="surface prompt-surface">
-                                      <div class="prompt-toolbar">
-                                          <div class="form-group">
-                                              <label class="form-label" for="prompt-scene-select">场景</label>
-                                              <select
-                                                  id="prompt-scene-select"
-                                                  class="control"
-                                                  .value=${this.selectedProfile}
-                                                  ?disabled=${this._saving || this._fileBusy}
-                                                  @change=${this._handleProfileChange}
-                                              >
-                                                  ${PROFILES.map(profile => html`<option value=${profile.value}>${profile.label}</option>`)}
-                                              </select>
-                                          </div>
-                                          <div class="prompt-actions">
-                                              <button
-                                                  class="scheme-button primary"
-                                                  ?disabled=${this._saving || this._fileBusy || Boolean(this._pendingImportedPrompts) || !this._dirty || this._selectedSchemeId !== this._activeSchemeId}
-                                                  @click=${this._saveCurrentScheme}
-                                              >
-                                                  ${this._saving ? '保存中……' : '保存修改'}
-                                              </button>
-                                          </div>
-                                      </div>
+                                      ${
+                                          activeScheme
+                                              ? html`
+                                                    <div class="prompt-toolbar">
+                                                        <div class="form-group">
+                                                            <label class="form-label" for="prompt-scene-select">场景</label>
+                                                            <select
+                                                                id="prompt-scene-select"
+                                                                class="control"
+                                                                .value=${this.selectedProfile}
+                                                                ?disabled=${this._saving || this._fileBusy}
+                                                                @change=${this._handleProfileChange}
+                                                            >
+                                                                ${PROFILES.map(profile => html`<option value=${profile.value}>${profile.label}</option>`)}
+                                                            </select>
+                                                        </div>
+                                                        <div class="prompt-actions">
+                                                            <button
+                                                                class="scheme-button primary"
+                                                                ?disabled=${this._saving || this._fileBusy || Boolean(this._pendingImportedPrompts) || !this._dirty || this._selectedSchemeId !== this._activeSchemeId}
+                                                                @click=${this._saveCurrentScheme}
+                                                            >
+                                                                ${this._saving ? '保存中……' : '保存修改'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                                      <div class="prompt-scroll">
-                                          <div class="profile-field-list">
-                                              ${
-                                                  profilePrompt
-                                                      ? PROMPT_FIELDS.map(field => this._renderPromptField(this.selectedProfile, field))
-                                                      : html`<div class="empty">当前方案没有这个场景的提示词内容。</div>`
-                                              }
-                                          </div>
+                                                    <div class="prompt-scroll">
+                                                        <div class="profile-field-list">
+                                                            ${
+                                                                profilePrompt
+                                                                    ? PROMPT_FIELDS.map(field => this._renderPromptField(this.selectedProfile, field))
+                                                                    : html`<div class="empty">当前方案没有这个场景的提示词内容。</div>`
+                                                            }
+                                                        </div>
 
-                                          <div class="form-group prompt-field user-context">
-                                              <label class="form-label">自定义指令</label>
-                                              <textarea
-                                                  class="control"
-                                                  placeholder="简历信息、岗位要求、限制条件……"
-                                                  .value=${this._draftPrompts?.customPrompt || ''}
-                                                  ?disabled=${this._saving || this._fileBusy}
-                                                  @input=${e => this._updatePromptContent('customPrompt', e.target.value)}
-                                              ></textarea>
-                                          </div>
+                                                        <div class="form-group prompt-field user-context">
+                                                            <label class="form-label">自定义指令</label>
+                                                            <textarea
+                                                                class="control"
+                                                                placeholder="简历信息、岗位要求、限制条件……"
+                                                                .value=${this._draftPrompts?.customPrompt || ''}
+                                                                ?disabled=${this._saving || this._fileBusy || !activeScheme}
+                                                                @input=${e => this._updatePromptContent('customPrompt', e.target.value)}
+                                                            ></textarea>
+                                                        </div>
 
-                                          <div class="form-group prompt-field chinese-instructions">
-                                              <label class="form-label">简体中文回答要求</label>
-                                              <textarea
-                                                  class="control"
-                                                  .value=${this._draftPrompts?.qwenChineseInstruction || ''}
-                                                  ?disabled=${this._saving || this._fileBusy}
-                                                  @input=${e => this._updatePromptContent('qwenChineseInstruction', e.target.value)}
-                                              ></textarea>
-                                              <div class="form-help">仅中文语言设置时附加到千问会话指令。</div>
-                                          </div>
-                                      </div>
+                                                        <div class="form-group prompt-field chinese-instructions">
+                                                            <label class="form-label">简体中文回答要求</label>
+                                                            <textarea
+                                                                class="control"
+                                                                .value=${this._draftPrompts?.qwenChineseInstruction || ''}
+                                                                ?disabled=${this._saving || this._fileBusy || !activeScheme}
+                                                                @input=${e => this._updatePromptContent('qwenChineseInstruction', e.target.value)}
+                                                            ></textarea>
+                                                            <div class="form-help">仅中文语言设置时附加到千问会话指令。</div>
+                                                        </div>
+                                                    </div>
+                                                `
+                                              : html`<div class="empty">当前方案 ID 无效，未加载任何方案内容。请从上方菜单中明确选择方案。</div>`
+                                      }
                                   </section>
                               `
                     }

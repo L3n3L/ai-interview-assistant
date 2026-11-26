@@ -264,7 +264,7 @@ function setupStorageIpcHandlers() {
 
     ipcMain.handle('storage:set-preferences', async (event, preferences) => {
         try {
-            storage.setPreferences(preferences);
+            if (!storage.setPreferences(preferences)) throw new Error('偏好设置未能写入磁盘');
             return { success: true };
         } catch (error) {
             console.error('Error setting preferences:', error);
@@ -274,7 +274,7 @@ function setupStorageIpcHandlers() {
 
     ipcMain.handle('storage:update-preference', async (event, key, value) => {
         try {
-            storage.updatePreference(key, value);
+            if (!storage.updatePreference(key, value)) throw new Error('偏好设置未能写入磁盘');
             return { success: true };
         } catch (error) {
             console.error('Error updating preference:', error);

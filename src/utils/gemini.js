@@ -2,8 +2,17 @@ const { GoogleGenAI, Modality } = require('@google/genai');
 const { BrowserWindow, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const { saveDebugAudio } = require('../audioUtils');
-const { getSystemPrompt, profilePrompts: defaultProfilePrompts, QWEN_CHINESE_INSTRUCTION } = require('./prompts');
-const { getAvailableModel, incrementLimitCount, getApiKey, getGroqApiKey, getDeepSeekApiKey, incrementCharUsage, getConfig } = require('../storage');
+const { getSystemPrompt, profilePrompts: defaultProfilePrompts } = require('./prompts');
+const {
+    getAvailableModel,
+    incrementLimitCount,
+    getApiKey,
+    getGroqApiKey,
+    getDeepSeekApiKey,
+    incrementCharUsage,
+    getConfig,
+    getPreferences,
+} = require('../storage');
 const { connectCloud, sendCloudAudio, sendCloudText, sendCloudImage, closeCloud, isCloudActive, setOnTurnComplete } = require('./cloud');
 const { startTransportLog, logTransportEvent, closeTransportLog } = require('./transportLogger');
 const { QwenRealtimeSession, DEFAULT_MODEL: DEFAULT_QWEN_REALTIME_MODEL } = require('./qwen-realtime');
@@ -84,7 +93,14 @@ function sendToRenderer(channel, data) {
 }
 
 function normalizeQwenPromptScheme(promptScheme) {
-    if (!promptScheme || typeof promptScheme !== 'object' || !promptScheme.prompts || typeof promptScheme.prompts !== 'object') {
+    if (
+        !promptScheme ||
+        typeof promptScheme !== 'object' ||
+        typeof promptScheme.id !== 'string' ||
+        !promptScheme.id ||
+        !promptScheme.prompts ||
+        typeof promptScheme.prompts !== 'object'
+    ) {
         return null;
     }
 
@@ -93,33 +109,60 @@ function normalizeQwenPromptScheme(promptScheme) {
     const normalizedCatalog = {};
 
     for (const [profile, defaultParts] of Object.entries(defaultProfilePrompts)) {
-        const sourceParts = sourceCatalog[profile] && typeof sourceCatalog[profile] === 'object' ? sourceCatalog[profile] : {};
+        const sourceParts = sourceCatalog[profile];
+        if (!sourceParts || typeof sourceParts !== 'object' || Object.keys(defaultParts).some(field => typeof sourceParts[field] !== 'string')) {
+            return null;
+        }
+
         normalizedCatalog[profile] = {};
         for (const [field, defaultValue] of Object.entries(defaultParts)) {
-            normalizedCatalog[profile][field] = typeof sourceParts[field] === 'string' ? sourceParts[field] : defaultValue;
+            normalizedCatalog[profile][field] = sourceParts[field];
         }
     }
 
+    if (typeof schemePrompts.customPrompt !== 'string' || typeof schemePrompts.qwenChineseInstruction !== 'string') return null;
+
     return {
-        id: typeof promptScheme.id === 'string' ? promptScheme.id : '',
+        id: promptScheme.id,
         name: typeof promptScheme.name === 'string' ? promptScheme.name : '',
         prompts: {
             profilePrompts: normalizedCatalog,
-            customPrompt: typeof schemePrompts.customPrompt === 'string' ? schemePrompts.customPrompt : '',
-            qwenChineseInstruction:
-                typeof schemePrompts.qwenChineseInstruction === 'string' ? schemePrompts.qwenChineseInstruction : QWEN_CHINESE_INSTRUCTION,
+            customPrompt: schemePrompts.customPrompt,
+            qwenChineseInstruction: schemePrompts.qwenChineseInstruction,
         },
     };
 }
 
-function getQwenSystemPrompt(profile, customPrompt, language, promptContent = null) {
-    const promptCatalog = promptContent?.profilePrompts || defaultProfilePrompts;
-    const contextPrompt = typeof promptContent?.customPrompt === 'string' ? promptContent.customPrompt : customPrompt;
-    const basePrompt = getSystemPrompt(profile, contextPrompt, false, promptCatalog);
+function resolveStoredQwenPromptScheme(expectedSchemeId, profile) {
+    if (typeof expectedSchemeId !== 'string' || !expectedSchemeId) return null;
+
+    const preferences = getPreferences();
+    if (preferences.activeQwenPromptSchemeId !== expectedSchemeId || !Array.isArray(preferences.qwenPromptSchemes)) return null;
+
+    const storedMatches = preferences.qwenPromptSchemes.filter(scheme => scheme?.id === expectedSchemeId);
+    if (storedMatches.length !== 1) return null;
+
+    const storedScheme = storedMatches[0];
+    const normalizedScheme = normalizeQwenPromptScheme(storedScheme);
+    if (!normalizedScheme?.prompts?.profilePrompts?.[profile]) return null;
+
+    return normalizedScheme;
+}
+
+function getQwenSystemPrompt(profile, language, promptContent) {
+    const profilePrompt = promptContent?.profilePrompts?.[profile];
+    if (
+        !profilePrompt ||
+        Object.values(profilePrompt).some(value => typeof value !== 'string') ||
+        typeof promptContent.customPrompt !== 'string' ||
+        typeof promptContent.qwenChineseInstruction !== 'string'
+    ) {
+        throw new Error('当前 Qwen 提示词方案不完整');
+    }
+
+    const basePrompt = getSystemPrompt(profile, promptContent.customPrompt, false, promptContent.profilePrompts);
     if (/^(zh|cmn)/i.test(language || '')) {
-        const chineseInstruction =
-            typeof promptContent?.qwenChineseInstruction === 'string' ? promptContent.qwenChineseInstruction : QWEN_CHINESE_INSTRUCTION;
-        return `${basePrompt}\n\n${chineseInstruction}`;
+        return `${basePrompt}\n\n${promptContent.qwenChineseInstruction}`;
     }
     return basePrompt;
 }
@@ -259,22 +302,26 @@ function handleQwenRealtimeEvent(event) {
 async function initializeQwenRealtimeSession(
     apiKey,
     model = DEFAULT_QWEN_REALTIME_MODEL,
-    customPrompt = '',
     profile = 'interview',
     language = 'cmn-CN',
-    promptScheme = null
+    expectedSchemeId = ''
 ) {
     if (!apiKey || !apiKey.trim()) return false;
+
+    const resolvedPromptScheme = resolveStoredQwenPromptScheme(expectedSchemeId, profile);
+    if (!resolvedPromptScheme) {
+        sendToRenderer('update-status', 'Qwen 初始化失败：提示词方案状态已变化或无效，已停止启动。请重新选择方案后再开始。');
+        return false;
+    }
 
     closeQwenRealtimeSession();
     currentProviderMode = 'qwen-realtime';
     currentQwenApiKey = apiKey.trim();
     qwenCurrentUserTranscript = '';
     qwenCurrentResponseText = '';
-    const resolvedPromptScheme = normalizeQwenPromptScheme(promptScheme);
-    const schemePrompts = resolvedPromptScheme?.prompts || null;
-    const effectiveCustomPrompt = typeof schemePrompts?.customPrompt === 'string' ? schemePrompts.customPrompt : customPrompt;
-    const instructions = getQwenSystemPrompt(profile, effectiveCustomPrompt, language, schemePrompts);
+    const schemePrompts = resolvedPromptScheme.prompts;
+    const effectiveCustomPrompt = schemePrompts.customPrompt;
+    const instructions = getQwenSystemPrompt(profile, language, schemePrompts);
     initializeNewSession(profile, effectiveCustomPrompt);
 
     const session = new QwenRealtimeSession({
@@ -303,14 +350,19 @@ async function initializeQwenOmniRealtimeSession(
     apiKey,
     model = DEFAULT_QWEN_OMNI_REALTIME_MODEL,
     workspaceId = '',
-    customPrompt = '',
     profile = 'interview',
     language = 'cmn-CN',
-    promptScheme = null
+    expectedSchemeId = ''
 ) {
     if (!apiKey || !apiKey.trim()) return false;
     if (!workspaceId || !String(workspaceId).trim()) {
         sendToRenderer('update-status', 'Qwen Omni 初始化失败：缺少 Workspace ID');
+        return false;
+    }
+
+    const resolvedPromptScheme = resolveStoredQwenPromptScheme(expectedSchemeId, profile);
+    if (!resolvedPromptScheme) {
+        sendToRenderer('update-status', 'Qwen Omni 初始化失败：提示词方案状态已变化或无效，已停止启动。请重新选择方案后再开始。');
         return false;
     }
 
@@ -319,10 +371,9 @@ async function initializeQwenOmniRealtimeSession(
     currentQwenApiKey = apiKey.trim();
     qwenCurrentUserTranscript = '';
     qwenCurrentResponseText = '';
-    const resolvedPromptScheme = normalizeQwenPromptScheme(promptScheme);
-    const schemePrompts = resolvedPromptScheme?.prompts || null;
-    const effectiveCustomPrompt = typeof schemePrompts?.customPrompt === 'string' ? schemePrompts.customPrompt : customPrompt;
-    const instructions = getQwenSystemPrompt(profile, effectiveCustomPrompt, language, schemePrompts);
+    const schemePrompts = resolvedPromptScheme.prompts;
+    const effectiveCustomPrompt = schemePrompts.customPrompt;
+    const instructions = getQwenSystemPrompt(profile, language, schemePrompts);
     initializeNewSession(profile, effectiveCustomPrompt);
 
     const session = new QwenOmniRealtimeSession({
@@ -1852,16 +1903,8 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     ipcMain.handle(
         'initialize-qwen-realtime',
-        async (
-            event,
-            apiKey,
-            model = DEFAULT_QWEN_REALTIME_MODEL,
-            customPrompt = '',
-            profile = 'interview',
-            language = 'cmn-CN',
-            promptScheme = null
-        ) => {
-            return initializeQwenRealtimeSession(apiKey, model, customPrompt, profile, language, promptScheme);
+        async (event, apiKey, model = DEFAULT_QWEN_REALTIME_MODEL, profile = 'interview', language = 'cmn-CN', expectedSchemeId = '') => {
+            return initializeQwenRealtimeSession(apiKey, model, profile, language, expectedSchemeId);
         }
     );
 
@@ -1872,12 +1915,11 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
             apiKey,
             model = DEFAULT_QWEN_OMNI_REALTIME_MODEL,
             workspaceId = '',
-            customPrompt = '',
             profile = 'interview',
             language = 'cmn-CN',
-            promptScheme = null
+            expectedSchemeId = ''
         ) => {
-            return initializeQwenOmniRealtimeSession(apiKey, model, workspaceId, customPrompt, profile, language, promptScheme);
+            return initializeQwenOmniRealtimeSession(apiKey, model, workspaceId, profile, language, expectedSchemeId);
         }
     );
 

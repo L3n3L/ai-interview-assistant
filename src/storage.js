@@ -275,10 +275,8 @@ function getPreferences() {
         preferences.qwenPromptSchemes = [initialScheme];
         preferences.activeQwenPromptSchemeId = initialScheme.id;
         preferencesChanged = true;
-    } else if (!preferences.qwenPromptSchemes.some(scheme => scheme?.id === preferences.activeQwenPromptSchemeId)) {
-        preferences.activeQwenPromptSchemeId = preferences.qwenPromptSchemes[preferences.qwenPromptSchemes.length - 1].id;
-        preferencesChanged = true;
     }
+    // Preserve an invalid active ID so the UI and Qwen startup can require an explicit reselection.
 
     if ((preferences.qwenPromptTemplateRevision || 0) < QWEN_PROMPT_TEMPLATE_REVISION) {
         const defaultScheme = preferences.qwenPromptSchemes.find(scheme => scheme?.isDefault);
