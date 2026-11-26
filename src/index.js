@@ -11,9 +11,77 @@ const { setupGeminiIpcHandlers, stopMacOSAudioCapture, closeQwenRealtimeSession,
 const { logTransportEvent } = require('./utils/transportLogger');
 const phoneCompanion = require('./utils/phoneCompanion');
 const storage = require('./storage');
+const { profilePrompts: defaultProfilePrompts } = require('./utils/prompts');
 
 const geminiSessionRef = { current: null };
+const QWEN_PROMPT_SCHEME_FORMAT = 'ai-interview-assistant-qwen-prompt-scheme';
+const QWEN_PROMPT_SCHEME_FILE_VERSION = 1;
+const QWEN_PROMPT_SCHEME_MAX_BYTES = 2 * 1024 * 1024;
 let mainWindow = null;
+
+function normalizeQwenPromptSchemeFile(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('文件内容必须是提示词方案 JSON 对象');
+    }
+    if (value.format && value.format !== QWEN_PROMPT_SCHEME_FORMAT) {
+        throw new Error('文件格式不属于 AI 面试助手提示词方案');
+    }
+    if (value.version !== undefined && value.version !== QWEN_PROMPT_SCHEME_FILE_VERSION) {
+        throw new Error(`不支持的提示词文件版本：${value.version}`);
+    }
+
+    const prompts = value.prompts;
+    if (!prompts || typeof prompts !== 'object' || Array.isArray(prompts)) {
+        throw new Error('文件缺少 prompts 提示词内容');
+    }
+    if (!prompts.profilePrompts || typeof prompts.profilePrompts !== 'object' || Array.isArray(prompts.profilePrompts)) {
+        throw new Error('文件缺少 profilePrompts 场景提示词');
+    }
+
+    const normalizedProfilePrompts = {};
+    for (const [profile, defaultFields] of Object.entries(defaultProfilePrompts)) {
+        const sourceFields = prompts.profilePrompts[profile];
+        if (!sourceFields || typeof sourceFields !== 'object' || Array.isArray(sourceFields)) {
+            throw new Error(`文件缺少「${profile}」场景`);
+        }
+
+        normalizedProfilePrompts[profile] = {};
+        for (const field of Object.keys(defaultFields)) {
+            if (typeof sourceFields[field] !== 'string') {
+                throw new Error(`「${profile}.${field}」必须是文本内容`);
+            }
+            normalizedProfilePrompts[profile][field] = sourceFields[field];
+        }
+    }
+
+    if (typeof prompts.customPrompt !== 'string' || typeof prompts.qwenChineseInstruction !== 'string') {
+        throw new Error('文件缺少自定义指令或简体中文回答要求');
+    }
+
+    return {
+        name: typeof value.name === 'string' ? value.name.slice(0, 80) : '',
+        prompts: {
+            profilePrompts: normalizedProfilePrompts,
+            customPrompt: prompts.customPrompt,
+            qwenChineseInstruction: prompts.qwenChineseInstruction,
+        },
+    };
+}
+
+function makeQwenPromptSchemeFilename(name) {
+    const safeName = String(name || '提示词方案')
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+        .trim()
+        .slice(0, 80);
+    return `${safeName || '提示词方案'}.json`;
+}
+
+function parseQwenPromptSchemeJson(rawContents) {
+    let content = rawContents.replace(/^\uFEFF/, '').trim();
+    const fencedJson = content.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fencedJson) content = fencedJson[1];
+    return JSON.parse(content);
+}
 
 function createMainWindow() {
     mainWindow = createWindow(sendToRenderer, geminiSessionRef);
@@ -210,6 +278,62 @@ function setupStorageIpcHandlers() {
             return { success: true };
         } catch (error) {
             console.error('Error updating preference:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    // ============ QWEN PROMPT SCHEME FILES ============
+    ipcMain.handle('qwen-prompt:export-scheme', async (event, schemeData) => {
+        try {
+            const scheme = normalizeQwenPromptSchemeFile(schemeData);
+            const result = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
+                title: '导出提示词方案',
+                defaultPath: path.join(app.getPath('documents'), makeQwenPromptSchemeFilename(scheme.name)),
+                filters: [{ name: '提示词方案 JSON', extensions: ['json'] }],
+            });
+            if (result.canceled || !result.filePath) return { success: true, canceled: true };
+
+            const fileContents = {
+                format: QWEN_PROMPT_SCHEME_FORMAT,
+                version: QWEN_PROMPT_SCHEME_FILE_VERSION,
+                name: scheme.name,
+                prompts: scheme.prompts,
+            };
+            await fs.writeFile(result.filePath, JSON.stringify(fileContents, null, 2), 'utf8');
+            return { success: true, fileName: path.basename(result.filePath) };
+        } catch (error) {
+            console.error('Error exporting Qwen prompt scheme:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('qwen-prompt:import-scheme', async event => {
+        try {
+            const result = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+                title: '导入提示词方案',
+                defaultPath: app.getPath('documents'),
+                filters: [{ name: '提示词方案 JSON', extensions: ['json'] }],
+                properties: ['openFile'],
+            });
+            if (result.canceled || !result.filePaths?.[0]) return { success: true, canceled: true };
+
+            const filePath = result.filePaths[0];
+            const fileInfo = await fs.stat(filePath);
+            if (fileInfo.size > QWEN_PROMPT_SCHEME_MAX_BYTES) {
+                throw new Error('提示词文件超过 2 MB，无法导入');
+            }
+
+            const rawContents = await fs.readFile(filePath, 'utf8');
+            const importedScheme = normalizeQwenPromptSchemeFile(parseQwenPromptSchemeJson(rawContents));
+            return {
+                success: true,
+                data: {
+                    ...importedScheme,
+                    fileName: path.basename(filePath),
+                },
+            };
+        } catch (error) {
+            console.error('Error importing Qwen prompt scheme:', error);
             return { success: false, error: error.message };
         }
     });

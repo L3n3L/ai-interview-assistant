@@ -90,6 +90,12 @@ const storage = {
     async updatePreference(key, value) {
         return ipcRenderer.invoke('storage:update-preference', key, value);
     },
+    async exportQwenPromptScheme(schemeData) {
+        return ipcRenderer.invoke('qwen-prompt:export-scheme', schemeData);
+    },
+    async importQwenPromptScheme() {
+        return ipcRenderer.invoke('qwen-prompt:import-scheme');
+    },
 
     // Keybinds
     async getKeybinds() {
@@ -225,7 +231,9 @@ async function initializeQwenRealtime(profile = 'interview', language = 'cmn-CN'
 
     const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
     const model = config.qwenRealtimeModel || 'qwen-audio-3.1-realtime-plus';
-    const success = await ipcRenderer.invoke('initialize-qwen-realtime', apiKey, model, prefs.customPrompt || '', profile, language);
+    const promptScheme = prefs.qwenPromptSchemes?.find(scheme => scheme.id === prefs.activeQwenPromptSchemeId) || null;
+    const customPrompt = promptScheme?.prompts?.customPrompt ?? prefs.customPrompt ?? '';
+    const success = await ipcRenderer.invoke('initialize-qwen-realtime', apiKey, model, customPrompt, profile, language, promptScheme);
 
     if (success) {
         cheatingDaddy.setStatus('Qwen 实时已连接');
@@ -241,6 +249,8 @@ async function initializeQwenOmniRealtime(profile = 'interview', language = 'cmn
     const [prefs, config] = await Promise.all([storage.getPreferences(), storage.getConfig()]);
     const model = config.qwenOmniRealtimeModel || 'qwen3.8-omni-flash-realtime';
     const workspaceId = String(config.qwenWorkspaceId || '').trim();
+    const promptScheme = prefs.qwenPromptSchemes?.find(scheme => scheme.id === prefs.activeQwenPromptSchemeId) || null;
+    const customPrompt = promptScheme?.prompts?.customPrompt ?? prefs.customPrompt ?? '';
 
     if (!apiKey || !apiKey.trim() || !workspaceId) {
         cheatingDaddy.setStatus('error');
@@ -252,9 +262,10 @@ async function initializeQwenOmniRealtime(profile = 'interview', language = 'cmn
         apiKey,
         model,
         workspaceId,
-        prefs.customPrompt || '',
+        customPrompt,
         profile,
-        language
+        language,
+        promptScheme
     );
 
     if (success) {

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { profilePrompts, QWEN_CHINESE_INSTRUCTION } = require('./utils/prompts');
 
 const CONFIG_VERSION = 1;
 
@@ -41,7 +42,10 @@ const DEFAULT_PREFERENCES = {
     googleSearchEnabled: false,
     localLlmModel: 'unsloth/Qwen3.5-4B-GGUF:Q4_K_M',
     whisperModel: 'tiny',
+    qwenPromptSchemes: [],
+    activeQwenPromptSchemeId: '',
 };
+const QWEN_PROMPT_TEMPLATE_REVISION = 2;
 
 const DEFAULT_KEYBINDS = null; // null means use system defaults
 
@@ -241,9 +245,70 @@ function setQwenRealtimeApiKey(qwenRealtimeApiKey) {
 
 // ============ PREFERENCES ============
 
+function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function createDefaultQwenPromptScheme(customPrompt = '') {
+    const createdAt = Date.now();
+    return {
+        id: `qwen-scheme-${createdAt}`,
+        name: '默认方案',
+        isDefault: true,
+        createdAt,
+        updatedAt: createdAt,
+        prompts: {
+            profilePrompts: cloneJson(profilePrompts),
+            customPrompt: String(customPrompt || ''),
+            qwenChineseInstruction: QWEN_CHINESE_INSTRUCTION,
+        },
+    };
+}
+
 function getPreferences() {
     const saved = readJsonFile(getPreferencesPath(), {});
     const preferences = { ...DEFAULT_PREFERENCES, ...saved };
+    let preferencesChanged = false;
+
+    if (!Array.isArray(preferences.qwenPromptSchemes) || preferences.qwenPromptSchemes.length === 0) {
+        const initialScheme = createDefaultQwenPromptScheme(preferences.customPrompt);
+        preferences.qwenPromptSchemes = [initialScheme];
+        preferences.activeQwenPromptSchemeId = initialScheme.id;
+        preferencesChanged = true;
+    } else if (!preferences.qwenPromptSchemes.some(scheme => scheme?.id === preferences.activeQwenPromptSchemeId)) {
+        preferences.activeQwenPromptSchemeId = preferences.qwenPromptSchemes[preferences.qwenPromptSchemes.length - 1].id;
+        preferencesChanged = true;
+    }
+
+    if ((preferences.qwenPromptTemplateRevision || 0) < QWEN_PROMPT_TEMPLATE_REVISION) {
+        const defaultScheme = preferences.qwenPromptSchemes.find(scheme => scheme?.isDefault);
+        if (defaultScheme) {
+            if (defaultScheme.name === '默认提示词方案') {
+                defaultScheme.name = '默认方案';
+            }
+
+            if (defaultScheme.createdAt === defaultScheme.updatedAt && defaultScheme.prompts) {
+                const customPrompt =
+                    typeof defaultScheme.prompts.customPrompt === 'string'
+                        ? defaultScheme.prompts.customPrompt
+                        : String(preferences.customPrompt || '');
+                const qwenChineseInstruction =
+                    typeof defaultScheme.prompts.qwenChineseInstruction === 'string'
+                        ? defaultScheme.prompts.qwenChineseInstruction
+                        : QWEN_CHINESE_INSTRUCTION;
+                defaultScheme.prompts = {
+                    profilePrompts: cloneJson(profilePrompts),
+                    customPrompt,
+                    qwenChineseInstruction,
+                };
+                defaultScheme.updatedAt = Date.now();
+            }
+        }
+
+        preferences.qwenPromptTemplateRevision = QWEN_PROMPT_TEMPLATE_REVISION;
+        preferencesChanged = true;
+    }
+
     const legacyWhisperModels = new Set(['Xenova/whisper-tiny', 'Xenova/whisper-base', 'Xenova/whisper-small', 'tiny.en', 'base.en', 'small.en']);
     if (legacyWhisperModels.has(preferences.whisperModel) || preferences.whisperModel !== 'tiny') {
         preferences.whisperModel = 'tiny';
@@ -251,18 +316,42 @@ function getPreferences() {
     if (/^en-/i.test(preferences.selectedLanguage || '')) {
         preferences.selectedLanguage = 'cmn-CN';
     }
+
+    if (preferencesChanged) {
+        writeJsonFile(getPreferencesPath(), preferences);
+    }
+
     return preferences;
 }
 
 function setPreferences(preferences) {
     const current = getPreferences();
     const updated = { ...current, ...preferences };
+
+    if (Object.prototype.hasOwnProperty.call(preferences, 'customPrompt')) {
+        syncLegacyCustomPromptToDefaultScheme(updated, preferences.customPrompt);
+    }
+
     return writeJsonFile(getPreferencesPath(), updated);
+}
+
+function syncLegacyCustomPromptToDefaultScheme(preferences, value) {
+    if (!Array.isArray(preferences.qwenPromptSchemes)) return;
+
+    const defaultScheme = preferences.qwenPromptSchemes.find(scheme => scheme.isDefault);
+    if (defaultScheme?.prompts) {
+        defaultScheme.prompts.customPrompt = String(value || '');
+    }
 }
 
 function updatePreference(key, value) {
     const preferences = getPreferences();
     preferences[key] = value;
+
+    if (key === 'customPrompt') {
+        syncLegacyCustomPromptToDefaultScheme(preferences, value);
+    }
+
     return writeJsonFile(getPreferencesPath(), preferences);
 }
 
