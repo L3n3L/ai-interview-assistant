@@ -529,11 +529,6 @@ export class AICustomizeView extends LitElement {
             return;
         }
         const promptsToSave = importedPrompts || this._pendingImportedPrompts || this._draftPrompts;
-        if (!isCompletePromptSet(promptsToSave)) {
-            this._statusMessage = '提示词方案内容不完整；请补齐六个场景的五个字段、自定义指令和中文回答要求后再新增。';
-            this._statusType = 'error';
-            return;
-        }
 
         this._saving = true;
         try {
