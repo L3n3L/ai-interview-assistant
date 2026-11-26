@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { unifiedPageStyles } from './sharedPageStyles.js';
+import { clonePromptSchemePayload, resolvePromptSchemePayload } from '../../utils/promptSchemeCopy.mjs';
 
 const PROMPT_FIELDS = [
     { key: 'intro', label: '角色说明' },
@@ -528,7 +529,7 @@ export class AICustomizeView extends LitElement {
             this._statusType = 'error';
             return;
         }
-        const promptsToSave = importedPrompts || this._pendingImportedPrompts || this._draftPrompts;
+        const promptsToSave = resolvePromptSchemePayload(importedPrompts, this._pendingImportedPrompts, this._draftPrompts);
 
         this._saving = true;
         try {
@@ -544,7 +545,7 @@ export class AICustomizeView extends LitElement {
                 name,
                 createdAt,
                 updatedAt: createdAt,
-                prompts: cloneJson(promptsToSave),
+                prompts: clonePromptSchemePayload(promptsToSave),
             };
             const nextSchemes = [...schemes, scheme];
             const result = await cheatingDaddy.storage.setPreferences({
@@ -738,7 +739,7 @@ export class AICustomizeView extends LitElement {
                                                             <button
                                                                 class="scheme-button primary"
                                                                 ?disabled=${this._saving || this._fileBusy || this._selectedSchemeId !== this._activeSchemeId}
-                                                                @click=${this._addScheme}
+                                                                @click=${() => this._addScheme()}
                                                             >
                                                                 ${this._saving ? '创建中……' : this._pendingImportedPrompts ? '导入并创建' : '创建并切换'}
                                                             </button>
